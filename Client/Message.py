@@ -38,14 +38,15 @@ class Message:
     def form_message(self, target_public_key, server_public_key):
         #TODO cleanse data for SQL & XSS
 
-        inner_message_plaintext = self.data + self.signature + self.sender + str(self.time_stamp)
+        inner_message_plaintext = (self.data + chr(31) + self.signature + chr(31) + self.sender + chr(31) +
+                                   str(self.time_stamp))
         #TODO encrypt inner_message
         inner_message_ciphertext = inner_message_plaintext
 
         #TODO sign the inner_message_ciphertext
         inner_message_ciphertext_signature = "TODO_INNER_CIPHERTEXT_SIGNATURE"
-        outer_message_plaintext = (inner_message_ciphertext + inner_message_ciphertext_signature + self.sender +
-                                   self.target + str(self.time_stamp))
+        outer_message_plaintext = (inner_message_ciphertext + chr(31) + inner_message_ciphertext_signature + chr(31) +
+                                   self.sender + chr(31) + self.target + chr(31) + str(self.time_stamp))
         #TODO encrypt outer_message
         outer_message_ciphertext = outer_message_plaintext
 
