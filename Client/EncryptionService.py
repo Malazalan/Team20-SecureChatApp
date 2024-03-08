@@ -25,20 +25,47 @@ public_key = private_key.public_key()
 
 TIME_WINDOW = datetime.timedelta(minutes=5)  # Example time window for message validity
 
+# Dummy database to store user information (replace this with a real database)
+USERS = {
+    'sender_id': {
+        'username': 'sender_username',
+        'public_key': 'sender_public_key'
+    },
+    'receiver_id': {
+        'username': 'receiver_username',
+        'public_key': 'receiver_public_key'
+    }
+}
+
+# Authenticate user based on token
+def authenticate(token):
+    try:
+        payload = jwt.decode(token, 'secret_key', algorithms=['HS256'])
+        return USERS.get(payload.get('user_id'))
+    except jwt.ExpiredSignatureError:
+        abort(401, description="Token has expired.")
+    except jwt.InvalidTokenError:
+        abort(401, description="Invalid token.")
+
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
     data = request.get_json(force=True)
-    if 'message' not in data:
-        abort(400, description="Missing required 'message' field.")
+    if 'plain_text' not in data or 'sender_id' not in data or 'receiver_id' not in data:
+        abort(400, description="Missing required fields.")
+    
+    sender = authenticate(data['sender_id'])
+    receiver = USERS.get(data['receiver_id'])
+    if not sender or not receiver:
+        abort(401, description="Invalid sender or receiver.")
 
-    message = data['message']
+    plain_text = data['plain_text']
     nonce = os.urandom(12)
     timestamp = datetime.datetime.utcnow().isoformat().encode('utf-8')  # ISO 8601 format
 
     try:
         aesgcm = AESGCM(aes_key)
         # Include timestamp in the additional authenticated data (AAD) to ensure integrity and authenticity
-        encrypted_message = aesgcm.encrypt(nonce, message.encode('utf-8'), timestamp)
+        encrypted_message = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), timestamp)
         
         # Sign the encrypted message along with the timestamp
         signature = private_key.sign(
@@ -51,7 +78,9 @@ def encrypt():
             'encrypted_message': encrypted_message.hex(),
             'nonce': nonce.hex(),
             'signature': signature.hex(),
-            'timestamp': timestamp.decode('utf-8')  # Return the ISO 8601 format string
+            'timestamp': timestamp.decode('utf-8'),  # Return the ISO 8601 format string
+            'sender': sender['username'],
+            'receiver': receiver['username']
         }), 200
     except Exception as e:
         logging.error(f"Encryption failed: {e}")
@@ -60,8 +89,13 @@ def encrypt():
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
     data = request.get_json(force=True)
-    if not all(k in data for k in ('encrypted_message', 'nonce', 'signature', 'timestamp')):
+    if not all(k in data for k in ('encrypted_message', 'nonce', 'signature', 'timestamp', 'sender_id', 'receiver_id')):
         abort(400, description="Missing required fields for decryption.")
+    
+    sender = USERS.get(data['sender_id'])
+    receiver = authenticate(data['receiver_id'])
+    if not sender or not receiver:
+        abort(401, description="Invalid sender or receiver.")
 
     try:
         encrypted_message = bytes.fromhex(data['encrypted_message'])
@@ -86,7 +120,11 @@ def decrypt():
         aesgcm = AESGCM(aes_key)
         decrypted_message = aesgcm.decrypt(nonce, encrypted_message, timestamp)
         
-        return jsonify({'decrypted_message': decrypted_message.decode('utf-8')}), 200
+        return jsonify({
+            'decrypted_message': decrypted_message.decode('utf-8'),
+            'sender': sender['username'],
+            'receiver': receiver['username']
+        }), 200
     except Exception as e:
         logging.error(f"Decryption failed: {e}")
         abort(500, description="Decryption failed.")
