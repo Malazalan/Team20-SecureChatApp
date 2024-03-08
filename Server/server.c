@@ -9,6 +9,11 @@
 #define PORT 54321
 #define MAX_CONN 5
 #define MAX_PACKET_LENGTH 128
+#define HEADER_LENGTH 16
+
+// Header types
+#define text 1
+#define file 2
 
 pthread_mutex_t lock;
 
@@ -59,18 +64,19 @@ int main(int argc, char * argv[]) {
         }
 
         // Receive number of packets to accept
-        unsigned char num_packets_bytes[MAX_PACKET_LENGTH];  // Assuming the length is represented using MAX_PACKET_LENGTH bytes
-        if (recv(new_client, num_packets_bytes, MAX_PACKET_LENGTH, 0) < 0) {
+        unsigned char num_packets_bytes[HEADER_LENGTH];  // Assuming the length is represented using MAX_PACKET_LENGTH bytes
+        if (recv(new_client, num_packets_bytes, HEADER_LENGTH, 0) < 0) {
             perror("Error receiving number of packets");
             exit(EXIT_FAILURE);
         }
 
-        // Convert the bytes to an integer
+        unsigned char messageType = num_packets_bytes[0];
+
+        // Convert the bytes to an integer - ignoring the first byte
         int num_packets = 0;
-        for (int i = 0; i < MAX_PACKET_LENGTH; i++) {
-            num_packets |= (num_packets_bytes[i] & 0xFF) << (i * 8);
+        for (int i = 1; i < HEADER_LENGTH; i++) {
+            num_packets |= (num_packets_bytes[i] & 0xFF) << ((i-1) * 8);
         }
-        printf("%d\n", num_packets);
 
         for (int message_id = 0; message_id < num_packets; message_id++) {
             if (recv(new_client, buffer, MAX_PACKET_LENGTH, 0) < 0) {
