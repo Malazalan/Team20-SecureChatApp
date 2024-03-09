@@ -38,7 +38,7 @@ class Message:
     def form_message(self, target_public_key, server_public_key):
         #TODO cleanse data for SQL & XSS
 
-        inner_message_plaintext = (self.data + chr(31) + self.signature + chr(31) + self.sender + chr(31) +
+        inner_message_plaintext = (self.data + chr(30) + self.signature + chr(30) + self.sender + chr(30) +
                                    str(self.time_stamp))
         #TODO encrypt inner_message
         inner_message_ciphertext = inner_message_plaintext
