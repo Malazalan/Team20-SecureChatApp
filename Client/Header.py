@@ -8,6 +8,8 @@ class Message_Type(Enum):
     FILE = 2
 
 
+def bytes_to_header(header_bytes):
+    return Header(header_bytes[0], int.from_bytes(header_bytes[1:], "little"))
 class Header:
     def __init__(self, message_type, number_of_packets):
         self.type = message_type
