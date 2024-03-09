@@ -47,6 +47,7 @@ def authenticate(token):
     except jwt.InvalidTokenError:
         abort(401, description="Invalid token.")
 
+#AES-GCM + nonce + aes_key encryption function
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
     data = request.get_json(force=True)
@@ -86,6 +87,7 @@ def encrypt():
         logging.error(f"Encryption failed: {e}")
         abort(500, description="Encryption failed.")
 
+# AES-GCM + nonce + aes_key decryption function
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
     data = request.get_json(force=True)
@@ -130,15 +132,19 @@ def decrypt():
         abort(500, description="Decryption failed.")
 
 # RSA public key encryption function
-def rsa_encrypt(public_key, plaintext):
+@app.route('/rsa_encrypt', methods=['POST'])
+# RSA public key encryption function with signature
+def rsa_encrypt_with_signature(public_key, private_key, plaintext):
     """
-    Encrypts plaintext using RSA public key.
+    Encrypts plaintext using RSA public key and signs the encrypted message.
     
     :param public_key: RSA public key for encryption.
+    :param private_key: RSA private key for signing.
     :param plaintext: The plaintext message to encrypt.
-    :return: Encrypted data as bytes.
+    :return: Encrypted data as bytes, signature as bytes.
     """
-    encrypted = public_key.encrypt(
+    # Encrypt plaintext using RSA-OAEP
+    encrypted_data = public_key.encrypt(
         plaintext.encode('utf-8'),
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -146,17 +152,39 @@ def rsa_encrypt(public_key, plaintext):
             label=None
         )
     )
-    return encrypted
+    # Sign the encrypted data
+    signature = private_key.sign(
+        encrypted_data,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    return encrypted_data, signature
 
-# RSA private key decryption function
-def rsa_decrypt(private_key, encrypted_data):
+# RSA private key decryption function with signature verification
+def rsa_decrypt_with_signature(public_key, private_key, encrypted_data, signature):
     """
-    Decrypts data using RSA private key.
+    Decrypts data using RSA private key and verifies the signature.
     
+    :param public_key: RSA public key for signature verification.
     :param private_key: RSA private key for decryption.
     :param encrypted_data: The encrypted data to decrypt.
+    :param signature: The signature to verify.
     :return: Decrypted plaintext as a string.
     """
+    # Verify the signature
+    public_key.verify(
+        signature,
+        encrypted_data,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    # Decrypt the data using RSA-OAEP
     decrypted = private_key.decrypt(
         encrypted_data,
         padding.OAEP(
