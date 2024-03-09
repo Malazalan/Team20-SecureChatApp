@@ -129,5 +129,43 @@ def decrypt():
         logging.error(f"Decryption failed: {e}")
         abort(500, description="Decryption failed.")
 
+# RSA public key encryption function
+def rsa_encrypt(public_key, plaintext):
+    """
+    Encrypts plaintext using RSA public key.
+    
+    :param public_key: RSA public key for encryption.
+    :param plaintext: The plaintext message to encrypt.
+    :return: Encrypted data as bytes.
+    """
+    encrypted = public_key.encrypt(
+        plaintext.encode('utf-8'),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return encrypted
+
+# RSA private key decryption function
+def rsa_decrypt(private_key, encrypted_data):
+    """
+    Decrypts data using RSA private key.
+    
+    :param private_key: RSA private key for decryption.
+    :param encrypted_data: The encrypted data to decrypt.
+    :return: Decrypted plaintext as a string.
+    """
+    decrypted = private_key.decrypt(
+        encrypted_data,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return decrypted.decode('utf-8')
+
 if __name__ == '__main__':
     app.run(ssl_context='adhoc')
