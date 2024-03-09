@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <string.h>
 
 #define PORT 54321
 #define MAX_CONN 5
@@ -17,18 +18,50 @@
 
 pthread_mutex_t lock;
 
+char** splitMessage(char* receivedMessage, int* tokenCount) {
+    const char delim[2] = "\x1F";
+    char *token;
+    char** tokens = NULL;
+    int count = 0;
+
+    token = strtok(receivedMessage, delim);
+
+    while(token != NULL) {
+        tokens = realloc(tokens, sizeof(char*) * (count + 1));
+        if(tokens == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        tokens[count] = malloc(strlen(token) + 1);
+        if(tokens[count] == NULL) {
+            fprintf(stderr, "Memory allocation failed for token\n");
+            exit(EXIT_FAILURE);
+        }
+
+        strcpy(tokens[count], token);
+
+        count++;
+        token = strtok(NULL, delim);
+    }
+
+    // Store the token count
+    *tokenCount = count;
+
+    return tokens; // Return the dynamic array of tokens
+}
+
 int main(int argc, char * argv[]) {
+    char* Alice = "127.0.0.1";
     printf("Team 20 Secure Chat App Server V1\n\n");
 
     // Set up the listening server
     // Init
     int server_fd, new_client;
-    ssize_t valread;
     struct sockaddr_in address;
     int opt = 1;
     socklen_t addrlen = sizeof(address);
     char buffer[MAX_PACKET_LENGTH] = { 0 };
-    char * hello = "Hello from server!";
 
     // Create socket fd
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -78,16 +111,36 @@ int main(int argc, char * argv[]) {
             num_packets |= (num_packets_bytes[i] & 0xFF) << ((i-1) * 8);
         }
 
+        char* receivedMessage = malloc(num_packets * MAX_PACKET_LENGTH);
+        int nextChar = 0;
         for (int message_id = 0; message_id < num_packets; message_id++) {
             if (recv(new_client, buffer, MAX_PACKET_LENGTH, 0) < 0) {
                 perror("Error receiving message contents");
                 exit(EXIT_FAILURE);
             }
-            printf("%s", buffer);
+            for (int charNum = 0; charNum < MAX_PACKET_LENGTH; charNum++) {
+                receivedMessage[nextChar] = buffer[charNum];
+                nextChar++;
+            }
         }
-        printf("\n");
 
         close(new_client);
+
+        int tokenCount = 0;
+        char** tokens = splitMessage(receivedMessage, &tokenCount);
+
+        printf("Encrypted message - %s\n", tokens[0]);
+        printf("Ciphertext sign - %s\n", tokens[1]);
+        printf("Sender - %s\n", tokens[2]);
+        printf("Target - %s\n", tokens[3]);
+        printf("Timestamp - %s\n", tokens[4]);
+
+        for(int i = 0; i < tokenCount; i++) {
+            free(tokens[i]);
+        }
+        free(tokens);
+
+        printf("\n\n");
     }
     // Cleanup
     close(server_fd);
