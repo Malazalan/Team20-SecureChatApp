@@ -10,11 +10,14 @@ from Header import *
 MAX_PACKET_LENGTH = 12
 MAX_RECONN = 15
 server_ip = "194.164.20.210"
+#server_ip = "127.0.0.1"
 server_port = 54321
 
 keepRunning = True  # Flag to control the execution flow
 stdout_mutex = threading.Lock()
 socket_mutex = threading.Lock()
+
+messages = []
 
 
 def signal_handler(sig, frame):
@@ -27,10 +30,13 @@ def signal_handler(sig, frame):
 def server_listen_handler():
     global keepRunning
 
+    print("Starting listener")
+
     listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listen_socket.bind(("0.0.0.0", 12345))
     listen_socket.listen(10)
+    listen_socket.settimeout(2)
 
     if not listen_socket:
         print("Listen socket failed to start")
@@ -47,11 +53,15 @@ def server_listen_handler():
             for packet_num in range(0, header.number_of_packets):
                 packet = server_socket.recv(MAX_PACKET_LENGTH, 0)
                 message += packet
-            print(message.decode('utf-8'))
+            split_message = message.decode('utf-8').split(chr(31))
+            messages.append(split_message)
+            #for thing in split_message:
+                #print(thing)
         else:
             if not keepRunning:
                 break
 
+    print("Listen closed")
     listen_socket.close()
 
 
@@ -64,7 +74,7 @@ def server_send_handler(message_to_send, message_type):
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.settimeout(1)
             try:
-                print(f"Connecting to server")
+                #print(f"Connecting to server")
                 server.connect((server_ip, server_port))
 
                 # Tell the server to expect len(message_to_send) chunks
@@ -73,7 +83,7 @@ def server_send_handler(message_to_send, message_type):
 
                 message_length = len(message_to_send).to_bytes(MAX_PACKET_LENGTH, byteorder='little')
                 #server.send(message_length)
-                print(f"Sending header")
+                #print(f"Sending header")
                 server.send(message_header.get_header_bytes())
 
                 count = 1
@@ -81,7 +91,7 @@ def server_send_handler(message_to_send, message_type):
                     count += 1
                     server.send(message)
 
-                print(f"Message sent!")
+                #print(f"Message sent!")
             except socket.timeout:
                 print(f"Retry {attempts}/{MAX_RECONN}")
                 sent = False
@@ -107,7 +117,7 @@ def prepare_message(sender, target, data, target_public_key, server_public_key, 
     server_send_handler(bytes_full_message_to_send, message_type)
 
 
-if __name__ == '__main__':
+if __name__ == '__ain__':
     # System initialisation
     listenThread = threading.Thread(target=server_listen_handler)
     listenThread.start()
@@ -119,7 +129,7 @@ if __name__ == '__main__':
 
     # Test stuff
     # Text test
-    writeThread = threading.Thread(target=prepare_message, args=("Alan", "Mehul", f"Hello World!", "", "", Message_Type.TEXT))
+    writeThread = threading.Thread(target=prepare_message, args=("John", "Alan", f"Hello World!", "", "", Message_Type.TEXT))
     writeThread.start()
 
     listenThread.join()
