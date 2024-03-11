@@ -13,12 +13,44 @@
 #define MAX_CONN 5
 #define MAX_PACKET_LENGTH 12
 #define HEADER_LENGTH 16
+#define MAX_CLIENTS 10
 
 // Header types
 #define text 1
 #define file 2
 
 pthread_mutex_t lock;
+
+struct Client {
+    char* username;
+    int usernameSize;
+    char* IP;
+    int IPSize;
+};
+
+void secureFreeClient (struct Client * client) {
+    if (client) {
+        if (client->username) {
+            memset(client->username, 0, client->usernameSize);
+            free(client->username);
+        }
+
+        if (client->IP) {
+            memset(client->IP, 0, client->IPSize);
+            free(client->IP);
+        }
+
+        memset(client, 0, sizeof(*client));
+        free(client);
+    }
+}
+
+void secureFreeString (char * string) {
+    if (string) {
+        memset(string, 0, strlen(string));
+        free(string);
+    }
+}
 
 struct Header {
     int messageType;
@@ -90,7 +122,7 @@ void handleWrite(char* address, struct Header * header, const unsigned char* mes
 
         printf("Sent %s\n", buffer);
         send(sockfd, buffer, MAX_PACKET_LENGTH, 0);
-        free(buffer);
+        secureFreeString((char*) buffer);
     }
     printf("Finished\n\n");
 }
@@ -140,7 +172,30 @@ char** splitMessage(char* receivedMessage, int* tokenCount) {
 }
 
 int main(int argc, char * argv[]) {
-    char* Alice = "127.0.0.1";
+    // TODO make these addable through code - manual for testing
+    struct Client *allClients[MAX_CLIENTS];
+
+    // Alan
+    struct Client * Alan = malloc(sizeof(struct Client));
+    Alan->username = malloc(strlen("Alan"));
+    strncpy(Alan->username, "Alan", 5);
+    Alan->usernameSize = strlen("Alan") + 1;
+    Alan->IP = malloc(strlen("127.0.0.1"));
+    strncpy(Alan->IP, "127.0.0.1", 10);
+    Alan->IPSize = strlen("127.0.0.1") + 1;
+
+    // Mehul
+    struct Client * Mehul = malloc(sizeof(struct Client));
+    Mehul->username = malloc(strlen("Mehul"));
+    strncpy(Mehul->username, "Mehul", 6);
+    Mehul->usernameSize = strlen("Mehul") + 1;
+    Mehul->IP = malloc(strlen("127.0.0.1")); //TODO change to his public IP
+    strncpy(Mehul->IP, "127.0.0.1", 10);
+    Mehul->IPSize = strlen("127.0.0.1") + 1;
+
+    allClients[0] = Alan;
+    allClients[1] = Mehul;
+
     printf("Team 20 Secure Chat App Server V1\n\n");
 
     // Set up the listening server
@@ -243,10 +298,21 @@ int main(int argc, char * argv[]) {
 
         printf("%s\n%s\n---\n", messageToSend, receivedMessage);
 
-        handleWrite(Alice, &headerToSend, (unsigned char*)messageToSend);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (allClients[i] != NULL) {
+                printf("Checking %s with %s\n", tokens[3], allClients[i]->username);
+                if (strcmp(tokens[3], allClients[i]->username) == 0) {
+                    handleWrite(allClients[i]->IP, &headerToSend, (unsigned char*)messageToSend);
+                    //TODO handle write in a separate thread
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
 
         for(int i = 0; i < tokenCount; i++) {
-            free(tokens[i]);
+            secureFreeString(tokens[i]);
         }
         free(tokens);
     }
