@@ -80,6 +80,7 @@ void handleWrite(char* address, struct Header * header, const unsigned char* mes
     }
 
     clientAddr.sin_family = AF_INET;
+    printf("Contacting %s\n", address);
     clientAddr.sin_addr.s_addr = inet_addr(address);
     clientAddr.sin_port = htons(CLIENT_PORT);
 
@@ -180,9 +181,9 @@ int main(int argc, char * argv[]) {
     Alan->username = malloc(strlen("Alan"));
     strncpy(Alan->username, "Alan", 5);
     Alan->usernameSize = strlen("Alan") + 1;
-    Alan->IP = malloc(strlen("127.0.0.1"));
-    strncpy(Alan->IP, "127.0.0.1", 10);
-    Alan->IPSize = strlen("127.0.0.1") + 1;
+    Alan->IP = malloc(strlen("128.240.225.16"));
+    strncpy(Alan->IP, "128.240.225.20", strlen("128.240.225.16") + 1);
+    Alan->IPSize = strlen("128.240.225.16") + 1;
 
     // Mehul
     struct Client * Mehul = malloc(sizeof(struct Client));
@@ -290,10 +291,20 @@ int main(int argc, char * argv[]) {
             messageLen += strlen(tokens[i]);
         }
 
+        // Add space for separators (ASCII 31). Note: tokenCount-1 because no separator after the last token
+        messageLen += tokenCount - 1;
+
         printf("%d\n", messageLen);
-        char messageToSend[messageLen];
+        char messageToSend[messageLen + 1]; // +1 for the null terminator
+        messageToSend[0] = '\0'; // Initialize the first character to null terminator to make it an empty string for strcat
+
         for (int i = 0; i < tokenCount; i++) {
             strcat(messageToSend, tokens[i]);
+            if (i < tokenCount - 1) { // Don't add a separator after the last token
+                int len = strlen(messageToSend);
+                messageToSend[len] = (char)31; // ASCII 31 - Unit separator
+                messageToSend[len + 1] = '\0'; // Null-terminate the string
+            }
         }
 
         printf("%s\n%s\n---\n", messageToSend, receivedMessage);
