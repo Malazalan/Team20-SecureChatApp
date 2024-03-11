@@ -18,7 +18,3 @@ class Header:
     def get_header_bytes(self):
         byte_header = (self.type).value.to_bytes(1, byteorder='little') + self.number_of_packets.to_bytes((HEADER_LENGTH - 1), byteorder='little')
         return byte_header
-
-
-test = Header(Message_Type.TEXT, 3)
-print(f"{test.get_header_bytes()}\n{len(test.get_header_bytes())}")
