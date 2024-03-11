@@ -180,9 +180,9 @@ export default {
             //senderID= 1
             //message:chatInput
           const OriginalMessage = {
-          receiverID: this.receiverID,
-        senderID: 1,
-        message: this.chatInput
+          receiver_id: this.receiverID,
+        sender_id: 1,
+        plain_text: this.chatInput
       };
           const  OriginalMessageString= JSON.stringify(OriginalMessage);
 // 创建要发送的 JSON 数据
@@ -196,7 +196,7 @@ const originalMessage = {
 const originalMessageString = JSON.stringify(originalMessage);
 
 // 发送 POST 请求
-fetch('??', {
+fetch('localhost:5432/api/encrypt', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json'
