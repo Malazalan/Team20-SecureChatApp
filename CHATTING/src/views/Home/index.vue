@@ -77,8 +77,11 @@ export default {
             isFriendSearchVisible: false,
         };
     },
-
-    components: {
+  mounted() {
+  const receiverID = this.$route.params.value;
+    //console.log(value); // 输出你想要的值
+      },
+  components: {
         Sidebar,
         Content,
         SettingsModal,
@@ -171,7 +174,57 @@ export default {
 
         sendMessage() {
             if (!this.chatInput.trim()) return; // 检查输入是否为空
+            //请求后端接口
 
+            //receiverID=selectedItemId
+            //senderID= 1
+            //message:chatInput
+          const OriginalMessage = {
+          receiverID: this.receiverID,
+        senderID: 1,
+        message: this.chatInput
+      };
+          const  OriginalMessageString= JSON.stringify(OriginalMessage);
+// 创建要发送的 JSON 数据
+const originalMessage = {
+  receiverID: this.receiverID,
+  senderID: 1,
+  message: this.chatInput
+};
+
+// 转换为 JSON 字符串
+const originalMessageString = JSON.stringify(originalMessage);
+
+// 发送 POST 请求
+fetch('??', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: originalMessageString
+})
+.then(response => {
+  // 处理响应
+  if (response.ok) {
+    // 请求成功
+    return response.json();
+  } else {
+    // 请求失败
+    throw new Error('Network response was not ok');
+  }
+})
+.then(data => {
+  // 处理返回的数据
+  console.log(data);
+})
+.catch(error => {
+  // 处理错误
+  console.error('There was a problem with your fetch operation:', error);
+});
+
+
+// 将 JSON 对象转换为字符串形式
+const jsonString = JSON.stringify(newMessage);
             let newMessage = {
                 id: Date.now(), // 生成唯一ID
                 content: this.chatInput,

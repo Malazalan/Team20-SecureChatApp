@@ -57,6 +57,10 @@ export default {
   async created() {
     await this.fetchData();
   },
+  mounted() {
+    this.$router.push({ name: 'index', params: { value: this.selectedItemId } });
+
+  },
 
   computed: {
     // 根据搜索框的内容过滤消息列表
