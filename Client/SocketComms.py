@@ -9,7 +9,7 @@ from Header import *
 
 MAX_PACKET_LENGTH = 12
 MAX_RECONN = 15
-server_ip = "127.0.0.1"
+server_ip = "194.164.20.210"
 server_port = 54321
 
 keepRunning = True  # Flag to control the execution flow
@@ -80,6 +80,8 @@ def server_send_handler(message_to_send, message_type):
                 for message in message_to_send:
                     count += 1
                     server.send(message)
+
+                print(f"Message sent!")
             except socket.timeout:
                 print(f"Retry {attempts}/{MAX_RECONN}")
                 sent = False
@@ -117,7 +119,7 @@ if __name__ == '__main__':
 
     # Test stuff
     # Text test
-    writeThread = threading.Thread(target=prepare_message, args=("Alice", "Alice", f"Data", "", "", Message_Type.TEXT))
+    writeThread = threading.Thread(target=prepare_message, args=("Alan", "Mehul", f"Hello World!", "", "", Message_Type.TEXT))
     writeThread.start()
 
     listenThread.join()
