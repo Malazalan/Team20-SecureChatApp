@@ -57,7 +57,29 @@ def login_function():
                 if user.password_correct(password):
                     login_user(user)
                     return redirect(url_for('home_page'))
-    return redirect(url_for('login_page'))
+    return redirect(url_for('login_page')) # TODO: add failure message?
+
+@app.route('/register')
+def register_page():
+    if current_user.is_authenticated:
+         logout_user()
+    return render_template('register.html')
+
+@app.route('/register_submit', methods = ['GET', 'POST'])
+def register_function():
+    if request.method == 'POST':
+        email = request.form.get('email') # the email doesn't have to be unique as is ¯\_(ツ)_/¯
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username and password and email:
+            user = get_user(username)
+            if user is None:  # No alerts if user is using username that already exists
+                Database.write_user(username, email, password)
+                user = get_user(username)
+                if user is not None:
+                    login_user(user)
+                    return redirect(url_for('home_page'))
+    return redirect(url_for('register_page'))
 
 @app.route('/logout')
 @login_required
