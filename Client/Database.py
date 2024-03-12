@@ -1,6 +1,7 @@
 import pymongo
 from werkzeug.security import generate_password_hash
 from pymongo.errors import DuplicateKeyError
+from User import User
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017")
 
@@ -17,5 +18,11 @@ def write_user(username, email, password):
     except DuplicateKeyError:
         print(f"Error: user with username '{username}' already exists")
 
-    
+def get_user(username):
+    user = users.find_one({'_id': username})
+    user_object = User(user)if user is not None else None
+    return user_object
+
+
 write_user("John", "john@gmail.com", "password")
+print(get_user('John'))
