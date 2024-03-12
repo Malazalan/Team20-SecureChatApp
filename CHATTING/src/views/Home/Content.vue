@@ -57,9 +57,6 @@ export default {
   async created() {
     await this.fetchData();
   },
-  mounted() {
-    this.$router.push({ name: 'index', params: { value: this.selectedItemId } });
-  },
 
   computed: {
     // 根据搜索框的内容过滤消息列表
@@ -68,8 +65,8 @@ export default {
         return this.messages;
       }
       return this.messages.filter(message =>
-        (message.senderName?.toLowerCase().includes(this.searchQuery) || false) ||
-        (message.content?.toLowerCase().includes(this.searchQuery) || false)
+          (message.senderName?.toLowerCase().includes(this.searchQuery) || false) ||
+          (message.content?.toLowerCase().includes(this.searchQuery) || false)
       );
     },
 
@@ -99,7 +96,14 @@ export default {
       this.$emit('chatSelected', item);
     },
   },
+  mounted() {
+    if (this.$route.name !== 'Home') {
+      this.$router.push({name: 'Home', params: {value: this.selectedItemId}});
+    }
+  }
+
 };
+
 </script>
 
 <style scoped>

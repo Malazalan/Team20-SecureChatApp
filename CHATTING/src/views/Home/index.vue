@@ -57,6 +57,7 @@ import SettingsModal from './SettingsModal.vue';
 import FriendSearchDialog from './FriendSearchDialog.vue';
 import { Picker } from 'emoji-mart-vue';
 import axios from 'axios';
+import router from "@/router";
 
 export default {
     name: "Home",
@@ -77,11 +78,8 @@ export default {
             isFriendSearchVisible: false,
         };
     },
-  mounted() {
-  const receiverID = this.$route.params.value;
-    //console.log(value); // 输出你想要的值
-      },
-  components: {
+
+    components: {
         Sidebar,
         Content,
         SettingsModal,
@@ -172,224 +170,224 @@ export default {
             this.showEmojiPicker = false;
         },
 
-        sendMessage() {
-            if (!this.chatInput.trim()) return; // 检查输入是否为空
-            //请求后端接口
-            //receiverID=selectedItemId
-            //senderID= 1
-            //message:chatInput
-            // 创建要发送的 JSON 数据
-            const originalMessage = {
-            receiverID: this.receiverID,
-            senderID: 1,
-            message: this.chatInput
-            };
+      sendMessage: function () {
+        if (!this.chatInput.trim()) return; // 检查输入是否为空
+        //请求后端接口
+        //receiverID=selectedItemId
+        //senderID= 1
+        //message:chatInput
+        // 创建要发送的 JSON 数据
+const selectedItemId = this.$route.params.value;
+console.log(selectedItemId);
+        const originalMessage = {
+          receiverID: 1,
+          senderID: 1,
+          message: this.chatInput,
+
+        };
 
 // 转换为 JSON 字符串
-const originalMessageString = JSON.stringify(originalMessage);
-
+        const originalMessageString = JSON.stringify(originalMessage);
+       console.log(originalMessageString);
 // 发送 POST 请求
-fetch('localhost:5432/api/encrypt', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: originalMessageString
-})
-.then(response => {
-  // 处理响应
-  if (response.ok) {
-    // 请求成功
-    return response.json();
-  } else {
-    // 请求失败
-    throw new Error('Network response was not ok');
-  }
-})
-.then(data => {
-  // 处理返回的数据
-  console.log(data);
-})
-.catch(error => {
-  // 处理错误
-  console.error('There was a problem with your fetch operation:', error);
-});
+        fetch('http://127.0.0.1:5432/api/encrypt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: originalMessageString
+        })
+            .then(response => {
+              // 处理响应
+              if (response.ok) {
+                // 请求成功
+                return response.json();
+              } else {
+                // 请求失败
+                throw new Error('Network response was not ok');
+              }
+            })
+            .then(data => {
+              // 处理返回的数据
+              console.log(data);
+            })
+            .catch(error => {
+              // 处理错误
+              console.error('There was a problem with your fetch operation:', error);
+            });
+        let newMessage = {
+          id: Date.now(), // 生成唯一ID
+          content: this.chatInput,
+          isSender: true // 标记为发送者
+        };
 
+        // 直接向chatHistory添加新消息
+        this.chatHistory.push(newMessage);
 
-// 将 JSON 对象转换为字符串形式
-const jsonString = JSON.stringify(newMessage);
-            let newMessage = {
-                id: Date.now(), // 生成唯一ID
-                content: this.chatInput,
-                isSender: true // 标记为发送者
-            };
-
-            // 直接向chatHistory添加新消息
-            this.chatHistory.push(newMessage);
-
-            // 清空输入框
-            this.chatInput = '';
-        }
+        // 清空输入框
+        this.chatInput = '';
+      }
     }
 }
 </script>
 
 <style scoped>
 .chat-input {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-top: 20px;
 }
 
 .input-buttons {
-    align-self: flex-start;
-    margin-bottom: 10px;
+  align-self: flex-start;
+  margin-bottom: 10px;
 }
 
 .chat-textarea .el-textarea__inner {
-    border-radius: 15px;
-    padding: 10px;
+  border-radius: 15px;
+  padding: 10px;
 }
 
 .send-button {
-    position: fixed;
-    right: 20px;
-    bottom: 30px;
-    z-index: 1000;
+  position: fixed;
+  right: 20px;
+  bottom: 30px;
+  z-index: 1000;
 }
 
 .chat-header {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #f0f2f5;
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #f0f2f5;
 }
 
 .chat-header span {
-    margin-left: 10px;
-    font-weight: bold;
+  margin-left: 10px;
+  font-weight: bold;
 }
 
 .chat-history {
-    overflow-y: auto;
-    flex-grow: 1;
-    padding: 10px;
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 10px;
 }
 
 .message-item {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 10px;
 }
 
 .message-avatar {
-    background-color: #f2f2f2;
-    margin-right: 10px;
+  background-color: #f2f2f2;
+  margin-right: 10px;
 }
 
 .message-item.sender {
-    justify-content: flex-end;
+  justify-content: flex-end;
 }
 
 .message-content {
-    background-color: #eef5fd;
-    border-radius: 15px;
-    padding: 8px 12px;
-    max-width: 70%;
-    word-break: break-word;
+  background-color: #eef5fd;
+  border-radius: 15px;
+  padding: 8px 12px;
+  max-width: 70%;
+  word-break: break-word;
 }
 
 .message-item.sender .message-content {
-    background-color: #daf5cb;
+  background-color: #daf5cb;
 }
 
 .message-item.sender .message-avatar {
-    order: 2;
-    margin-left: 10px;
-    margin-right: 0;
+  order: 2;
+  margin-left: 10px;
+  margin-right: 0;
 }
 
 .chat-input {
-    display: flex;
-    align-items: center;
-    margin-top: 20px;
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
 }
 
 .el-input .el-input__inner,
 .el-button {
-    height: 40px;
-    border-radius: 20px;
+  height: 40px;
+  border-radius: 20px;
 }
 
 .el-button--primary {
-    background-color: #409EFF;
-    border-color: #409EFF;
-    color: white;
+  background-color: #409EFF;
+  border-color: #409EFF;
+  color: white;
 }
 
 .home-container {
-    display: flex;
-    height: 100vh;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  display: flex;
+  height: 100vh;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .content,
 .chat {
-    background-color: #f9fafc;
-    width: 250px;
+  background-color: #f9fafc;
+  width: 250px;
 }
 
 .chat {
-    background: linear-gradient(to right, #ffffff, #bdcee9);
-    flex: 3;
-    border-left: 2px solid #f0f2f5;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+  background: linear-gradient(to right, #ffffff, #bdcee9);
+  flex: 3;
+  border-left: 2px solid #f0f2f5;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .chat-history p {
-    margin: 10px 0;
-    padding: 8px;
-    background-color: #eef5fd;
-    border-radius: 4px;
-    line-height: 1.5;
+  margin: 10px 0;
+  padding: 8px;
+  background-color: #eef5fd;
+  border-radius: 4px;
+  line-height: 1.5;
 }
 
 .chat-input .el-input {
-    flex-grow: 1;
+  flex-grow: 1;
 }
 
 .el-input,
 .el-button {
-    margin-right: 10px;
+  margin-right: 10px;
 }
 
 .el-button {
-    padding: 0 15px;
+  padding: 0 15px;
 }
 
 .el-button--icon {
-    border: none;
-    background-color: transparent;
+  border: none;
+  background-color: transparent;
 }
 
 .el-icon-smile,
 .el-icon-microphone {
-    color: #409eff;
+  color: #409eff;
 }
 
 .chat-background-only {
-    background: linear-gradient(to right, #e6e9f0, #eef1f5);
-    flex: 3;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  background: linear-gradient(to right, #e6e9f0, #eef1f5);
+  flex: 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
-.chat-background-only img{
-    width: 400px;
+
+.chat-background-only img {
+  width: 400px;
 }
 </style>
