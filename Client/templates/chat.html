@@ -4,6 +4,7 @@
 <title>Home</title>
 </head>
 <body>
+    
     <h1>Logged in user:{{ current_user.username }}</h1>
     
     <h2>Chatting with {{target_user_id}}</h2>
@@ -31,9 +32,19 @@
 
 </body>
 
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
 <script>
+// TODO: Add something to show if a user is online?
+
+window.onload = function() {  // TODO: make an option somewhere to clear the local storage
+    const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+    savedMessages.forEach(message => {
+        if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
+            console.log(message); 
+            appendMessage(message);
+        }
+    });
+};
 
     const socket = io.connect("http://127.0.0.1:5000");
     socket.on('connect', function(){
@@ -49,11 +60,15 @@
         e.preventDefault();
         let message = message_input.value;//.trim();
         if (message.length){
+            // TODO: message should be encrypted
+            // TODO: message needs data cleaning done to it here
+            //       I assume
             socket.emit('message_sent',{
                 username: "{{current_user.username}}",
                 target: "{{target_user_id}}",
                 message: message
             })
+
         message_input.value = '';
         }
     }
@@ -63,7 +78,21 @@
         const newNode = document.createElement('div');
         newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
         document.getElementById('messages').appendChild(newNode);
+    
+        saveMessageToLocalStorage(data);
     });
+
+    function appendMessage(data) {
+        const newNode = document.createElement('div');
+        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        document.getElementById('messages').appendChild(newNode);
+    }
+
+    function saveMessageToLocalStorage(message) {
+        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        savedMessages.push(message);
+        localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+    }
 
 </script>
 
