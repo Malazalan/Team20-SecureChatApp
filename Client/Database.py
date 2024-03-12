@@ -27,6 +27,10 @@ def get_user(username):
     user_object = User(user)if user is not None else None
     return user_object
 
+for current_username in ["Alice","Bob", "Charlie", "Dennis", "Eric", "Fatima"]:
+    if get_user(current_username) is None:
+        write_user(current_username, f"{current_username}@gmail.com", "password")
+
 if get_user("John") is None:
     write_user("John", "john@gmail.com", "password")
 
