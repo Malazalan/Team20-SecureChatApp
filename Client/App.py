@@ -2,7 +2,6 @@ from flask import Flask
 from flask import render_template, request, redirect, url_for
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
 from flask_socketio import SocketIO
-
 import importlib
 
 import Database
@@ -12,8 +11,11 @@ importlib.reload(User)
 import SocketComms
 importlib.reload(SocketComms)
 
+import threading
+
 from User import User
 from Database import get_user, get_user_ids
+from SocketComms import * # should maybe be changed but * works for now
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -74,6 +76,11 @@ def handle_join_room_event(data):
 @socketio.on('message_sent')
 def handle_join_room_event(data):
     app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']}")
+
+    #SocketComms.py stuff
+    writeThread = threading.Thread(target=prepare_message, args=("Alice", "Bob", f"{data['message']}", "", ""))
+    writeThread.start()
+
     socketio.emit('recieve_message', data, room=request.sid)
 
 if __name__ == '__main__':
