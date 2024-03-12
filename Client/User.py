@@ -1,3 +1,5 @@
+from werkzeug.security import check_password_hash
+
 class User:
 
     def __init__(self, user_data):
@@ -17,3 +19,7 @@ class User:
     
     def get_id(self):
         return self.username
+    
+    def password_correct(self, password_to_check):
+        return check_password_hash(self.password, password_to_check)
+
