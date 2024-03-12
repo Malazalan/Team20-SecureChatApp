@@ -59,7 +59,6 @@ export default {
   },
   mounted() {
     this.$router.push({ name: 'index', params: { value: this.selectedItemId } });
-
   },
 
   computed: {
