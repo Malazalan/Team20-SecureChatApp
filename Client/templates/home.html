@@ -4,6 +4,11 @@
 <title>Home</title>
 </head>
 <body>
-    <h1>Welcome {{ username }}</h1>
+    <h1>Welcome {{ current_user.username }}</h1>
+
+    <form action="/logout">
+        <button type="submit">Log Out</button>
+    </form>
+
 </body>
 </html>
