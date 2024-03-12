@@ -1,0 +1,19 @@
+class User:
+
+    def __init__(self, user_data):
+        
+        self.username = user_data['_id']
+        self.email = user_data['email']
+        self.password = user_data['password']
+
+    def is_authenticated(self):
+        return True
+    
+    def is_active(self):
+        return True 
+    
+    def is_anonymous(self):
+        return False
+    
+    def get_id(self):
+        return self.username
