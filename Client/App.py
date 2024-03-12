@@ -1,9 +1,22 @@
 from flask import Flask
 from flask import render_template, request, redirect, url_for
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
-from Database import get_user
+from flask_socketio import SocketIO
+
+import importlib
+
+import Database
+importlib.reload(Database)
+import User
+importlib.reload(User)
+import SocketComms
+importlib.reload(SocketComms)
+
+from User import User
+from Database import get_user, get_user_ids
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 app.secret_key = "very_secret_key"
 
@@ -20,7 +33,16 @@ def login_page():
 @app.route('/home')
 @login_required
 def home_page():
-    return render_template('home.html')
+    user_ids = get_user_ids(current_user)
+    return render_template('home.html', user_ids=user_ids)
+
+@app.route('/chat/<target_user_id>')
+@login_required
+def chat_page(target_user_id):
+    target_user = get_user(target_user_id)
+    if target_user is not None:
+        return render_template('chat.html', target_user_id = target_user_id)
+    return redirect(url_for('home_page'))
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login_function():
@@ -45,6 +67,15 @@ def logout_function():
 def load_user(username):
     return get_user(username)
 
+@socketio.on('user_connect')
+def handle_join_room_event(data):
+    app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
+
+@socketio.on('message_sent')
+def handle_join_room_event(data):
+    app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']}")
+    socketio.emit('recieve_message', data, room=request.sid)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
 
