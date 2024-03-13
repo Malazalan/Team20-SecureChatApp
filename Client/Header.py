@@ -4,6 +4,7 @@ from enum import Enum
 HEADER_LENGTH = 16
 
 class Message_Type(Enum):
+    METADATA = 0
     TEXT = 1
     FILE = 2
 
