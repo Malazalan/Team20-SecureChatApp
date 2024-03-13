@@ -76,6 +76,7 @@ export default {
             chatHistory: [],
             isRecording: false,
             isFriendSearchVisible: false,
+            selectedItemId:""
         };
     },
 
@@ -177,10 +178,8 @@ export default {
         //senderID= 1
         //message:chatInput
         // 创建要发送的 JSON 数据
-        const selectedItemId = this.$route.params.value;
-        console.log(selectedItemId);
         const originalMessage = {
-          receiverID: 1,
+          receiverID: this.currentChatUser.name,
           senderID: 1,
           message: this.chatInput
         };

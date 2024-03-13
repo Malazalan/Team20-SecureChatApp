@@ -65,7 +65,7 @@ export default {
         return this.messages;
       }
       return this.messages.filter(message =>
-          (message.senderName?.toLowerCase().includes(this.searchQuery) || false) ||
+          (message.receiverName?.toLowerCase().includes(this.searchQuery) || false) ||
           (message.content?.toLowerCase().includes(this.searchQuery) || false)
       );
     },

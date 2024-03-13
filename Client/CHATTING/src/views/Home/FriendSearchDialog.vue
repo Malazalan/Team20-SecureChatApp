@@ -1,21 +1,21 @@
 <template>
-    <el-dialog :visible.sync="isVisible" title="Search Friends" @close="handleClose" width="20%"
+    <el-dialog :visible.sync="isVisible" title="搜索好友" @close="handleClose" width="20%"
         :custom-class="'round-dialog'">
         <el-form :model="form" :rules="rules" ref="searchForm">
-            <el-form-item label="Please enter phone number" label-position="left" prop="phoneNumber">
-                <el-input v-model="form.phoneNumber" clearable></el-input>
+            <el-form-item label="请输入手机号或姓名" label-position="left">
+                <el-input v-model="form.keyword" clearable></el-input>
             </el-form-item>
         </el-form>
         <span slot="footer" class="dialog-footer">
-            <el-button @click="handleClose">Cancel</el-button>
-            <el-button type="primary" @click="validateForm">Search</el-button>
+            <el-button @click="handleClose">取消</el-button>
+            <el-button type="primary" @click="validateForm">搜索</el-button>
         </span>
     </el-dialog>
 </template>
 
-
-
 <script>
+import axios from 'axios';
+
 export default {
     name: "FriendSearchDialog",
     props: {
@@ -27,12 +27,11 @@ export default {
     data() {
         return {
             form: {
-                phoneNumber: ''
+                keyword: ''
             },
             rules: {
-                phoneNumber: [
-                    { required: true, message: 'Please enter a phone number', trigger: 'blur' },
-                    { pattern: /^1[3-9]\d{9}$/, message: 'Invalid phone number format', trigger: 'blur' }
+                keyword: [
+                    { required: true, message: '请输入手机号或姓名', trigger: 'blur' }
                 ]
             }
         };
@@ -40,21 +39,37 @@ export default {
     methods: {
         handleClose() {
             this.$emit('update:isVisible', false);
-            this.form = {}
+            this.form.keyword = ''; // Clear keyword
         },
         validateForm() {
             this.$refs.searchForm.validate((valid) => {
                 if (valid) {
                     this.searchFriend();
                 } else {
-                    console.log('Form validation failed');
+                    console.log('表单验证失败');
                     return false;
                 }
             });
         },
         searchFriend() {
-            console.log('Searching for friend with phone number:', this.form.phoneNumber);
-            this.handleClose();
+            axios.get('/search', {
+                params: {
+                    keyword: this.form.keyword
+                }
+            })
+            .then(response => {
+                const userData = response.data;
+                if (userData) {
+                    console.log('找到用户：', userData);
+                } else {
+                    console.log('未找到提供的信息对应的用户。');
+                }
+                this.handleClose();
+            })
+            .catch(error => {
+                console.error('搜索用户时出错：', error);
+                alert('搜索用户失败。请稍后再试。');
+            });
         }
     }
 };
