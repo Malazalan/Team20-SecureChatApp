@@ -2,3 +2,4 @@ Flask==3.0.2
 cryptography==37.0.2
 pymongo==4.6.2
 Flask-Login==0.6.3
+flask-socketio==5.3.6

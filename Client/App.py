@@ -20,7 +20,7 @@ from SocketComms import * # should maybe be changed but * works for now
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-app.secret_key = "very_secret_key"
+app.secret_key = "very_secret_key" # TODO: this
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -59,27 +59,30 @@ def login_function():
                     return redirect(url_for('home_page'))
     return redirect(url_for('login_page')) # TODO: add failure message?
 
-@app.route('/register')
-def register_page():
+@app.route('/register/<target_user>/<invite_id>')
+def register_page(target_user, invite_id):
     if current_user.is_authenticated:
          logout_user()
-    return render_template('register.html')
+    invite = Database.get_invite(target_user)
+    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']):
+        return render_template('register.html', username = target_user)
+    return redirect(url_for('login_page')) #TODO: need error handling telling the user it was an invalid invite?
 
 @app.route('/register_submit', methods = ['GET', 'POST'])
 def register_function():
     if request.method == 'POST':
-        email = request.form.get('email') # the email doesn't have to be unique as is ¯\_(ツ)_/¯
-        username = request.form.get('username')
         password = request.form.get('password')
-        if username and password and email:
+        username = request.headers.get('Referer').split('/')[-2]
+        email = "bleh@gmail.com"
+        user = get_user(username)
+        if user is None:  
+            Database.write_user(username, email, password)
+            Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
             user = get_user(username)
-            if user is None:  # No alerts if user is using username that already exists
-                Database.write_user(username, email, password)
-                user = get_user(username)
-                if user is not None:
-                    login_user(user)
-                    return redirect(url_for('home_page'))
-    return redirect(url_for('register_page'))
+            if user is not None:
+                login_user(user)
+                return redirect(url_for('home_page'))
+    return redirect(url_for('register_page')) #TODO: add error handling for if user is not none and this happens
 
 @app.route('/logout')
 @login_required
@@ -96,12 +99,17 @@ def handle_join_room_event(data):
     app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
 
 @socketio.on('message_sent')
-def handle_join_room_event(data):
+def handle_message_sent(data):
     app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']}")
 
-    #SocketComms.py stuff
-    writeThread = threading.Thread(target=prepare_message, args=("Alice", "Bob", f"{data['message']}", "", ""))
-    writeThread.start()
+    try:
+        #SocketComms.py stuff
+        #the line below is here just as a test to see if the lines below that will fail the try 
+        prepare_message("Alice", "Bob", f"{data['message']}", "", "")
+        writeThread = threading.Thread(target=prepare_message, args=("Alice", "Bob", f"{data['message']}", "", ""))
+        writeThread.start()
+    except:
+        print("Server stuff not working")
 
     socketio.emit('recieve_message', data, room=request.sid)
 

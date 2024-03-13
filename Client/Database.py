@@ -9,7 +9,11 @@ from User import User
 myclient = pymongo.MongoClient("mongodb://localhost:27017")
 
 database = myclient["ChatAppDatabase"]
+
 users = database.get_collection("users")
+invites = database.get_collection("invites")
+
+#TODO: code a killswitch function that overwrites all the data in the database with 0's 
 
 def write_user(username, email, password):
     password_hash = generate_password_hash(password)
@@ -22,10 +26,31 @@ def write_user(username, email, password):
     except DuplicateKeyError:
         print(f"Error: user with username '{username}' already exists")
 
+def write_invite(username, invite_id):
+    try:
+        invites.insert_one({'_id': username, 
+                        'invite_id': invite_id,
+                        })
+    except DuplicateKeyError:
+        print(f"Error: user with username '{username}' already exists")
+
 def get_user(username):
     user = users.find_one({'_id': username})
     user_object = User(user)if user is not None else None
     return user_object
+
+def get_invite(username):
+    invite = invites.find_one({'_id': username})
+    return invite
+
+def invite_exists(username):
+    invite = invites.find_one({'_id': username})
+    return invite if invite else None
+
+def remove_invite(username):
+    result = invites.delete_one({'_id': username})
+    return (True if result.deleted_count == 1 else False)  
+
 
 def get_user_ids(user):
     all_users = users.find()

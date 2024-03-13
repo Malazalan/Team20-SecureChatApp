@@ -59,6 +59,18 @@ def generate_username():
     noun = random.choice(nouns)
     return adjective.capitalize() + noun.capitalize()
 
+def add_user():
+    new_username = generate_username()
+    if not Database.get_user(new_username) and not Database.invite_exists(new_username): #TODO: error handling 
+        invite_id = "temp_key" # TODO: make this an encrypted string that only the server can decrypt. This should be 
+        Database.write_invite(new_username, invite_id)  # unique to the invite - probably the username+timestamp encrypted
+                                                        # in a way only the server can decrypt
+    else:
+        print("error handling")
+        add_user() #TODO: this is bad, could lead to an infinite loop
+
+
+
 
 
 
