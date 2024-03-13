@@ -1,254 +1,288 @@
-# Import necessary libraries
-from flask import Flask, request, jsonify
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from flask import Flask, request, jsonify, abort
 import os
-from config import Config  # Configuration class from config.py
-from cryptography.hazmat.backends import default_backend  # Explicitly import the default backend
-import base64
-
-# Initialize Flask application
-app = Flask(__name__)                         
-
-# Load configurations from Config class in config.py
-app.config.from_object(Config)
-
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidKey, InvalidSignature
+import jwt
+import logging
+import datetime
 
-# # Load private and public keys from configurations, assuming they are stored as PEM-formatted strings
-# try:
-#     private_key = serialization.load_pem_private_key(
-#         app.config['PRIVATE_KEY'].encode(),
-#         password=None,  # Assuming the private key is not encrypted
-#         backend=default_backend()  # Specify the backend explicitly
-#     )
-# except ValueError as e:
-#     print(f"Error loading private key: {e}")
-#     private_key = None  # Handle the error appropriately
+# from dotenv import load_dotenv
 
-# try:
-#     public_key = serialization.load_pem_public_key(
-#         app.config['PUBLIC_KEY'].encode(),
-#         backend=default_backend()  # Specify the backend explicitly
-#     )
-# except ValueError as e:
-#     print(f"Error loading public key: {e}")
-#     public_key = None  # Handle the error appropriately
+# Load environment variables for keys
+# load_dotenv()
 
-# 加载私钥
-with open("private_key.pem", "rb") as key_file:
-    private_key = serialization.load_pem_private_key(
-        key_file.read(),
-        password=None,
-        backend=default_backend()
-    )
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
-# 加载公钥
-with open("public_key.pem", "rb") as key_file:
-    public_key = serialization.load_pem_public_key(
-        key_file.read(),
-        backend=default_backend()
-    )
-    
-# Load the secret key from configuration for additional operations (not used in this code snippet)
-secret_key = app.config['SECRET_KEY']
+# Load AES key for encryption (simulating secure load from environment)
+# Generate RSA keys for signing (simulating secure load)
+private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+public_key = private_key.public_key()
 
-# Function to generate a new RSA key pair
-def generate_keys():
+server_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+print(server_private_key)
+server_public_key = server_private_key.public_key()
+
+def get_private_key():
+    return private_key
+
+def get_public_key():
+    return public_key
+
+def get_server_public_key():
+    return server_private_key
+
+TIME_WINDOW = datetime.timedelta(minutes=5)  # Example time window for message validity
+
+# Dummy database to store user information (replace this with a real database)
+USERS = {
+    'sender_id': {
+        'username': 'sender_username',
+        'public_key': 'sender_public_key'
+    },
+    'receiver_id': {
+        'username': 'receiver_username',
+        'public_key': 'receiver_public_key'
+    }
+}
+
+
+# Authenticate user based on token
+def authenticate(token):
     try:
-        # Generate private key with RSA algorithm
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048,  # Defines the security level of the key
-        )
-        print("generate private_key is:", private_key)
-        # Generate the public key from the private key
-        public_key = private_key.public_key()
+        payload = jwt.decode(token, 'secret_key', algorithms=['HS256'])
+        return USERS.get(payload.get('user_id'))
+    except jwt.ExpiredSignatureError:
+        abort(401, description="Token has expired.")
+    except jwt.InvalidTokenError:
+        abort(401, description="Invalid token.")
 
-        # Serialize private key to PEM format
-        pem_private = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+
+# AES-GCM + nonce + aes_key encryption function
+@app.route('/encrypt', methods=['POST'])
+def encrypt():
+    data = request.get_json(force=True)
+    if 'plain_text' not in data or 'sender_id' not in data or 'receiver_id' not in data:
+        abort(400, description="Missing required fields.")
+
+    sender = authenticate(data['sender_id'])
+    receiver = USERS.get(data['receiver_id'])
+    if not sender or not receiver:
+        abort(401, description="Invalid sender or receiver.")
+
+    plain_text = data['plain_text']
+    nonce = os.urandom(12)
+    timestamp = datetime.datetime.utcnow().isoformat().encode('utf-8')  # ISO 8601 format
+
+    try:
+        aesgcm = AESGCM(aes_key)
+        # Include timestamp in the additional authenticated data (AAD) to ensure integrity and authenticity
+        encrypted_message = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), timestamp)
+
+        # Sign the encrypted message along with the timestamp
+        signature = private_key.sign(
+            encrypted_message + timestamp,
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+            hashes.SHA256()
         )
 
-        # Serialize public key to PEM format
-        pem_public = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-
-        # Return serialized keys
-        return pem_private, pem_public
+        return jsonify({
+            'encrypted_message': encrypted_message.hex(),
+            'nonce': nonce.hex(),
+            'signature': signature.hex(),
+            'timestamp': timestamp.decode('utf-8'),  # Return the ISO 8601 format string
+            'sender': sender['username'],
+            'receiver': receiver['username']
+        }), 200
     except Exception as e:
-        print(f"Error generating keys: {e}")
-        return None, None
-    
-# Generate keys
-pem_private, pem_public = generate_keys()
+        logging.error(f"Encryption failed: {e}")
+        abort(500, description="Encryption failed.")
 
-# Ensure the keys were generated successfully
-if pem_private is not None and pem_public is not None:
-    # Save the serialized private key to a PEM file
-    with open("private_key.pem", "wb") as f:
-        f.write(pem_private)
-    
-    # Save the serialized public key to a PEM file
-    with open("public_key.pem", "wb") as f:
-        f.write(pem_public)
-else:
-    print("Failed to generate keys.")
 
-# # 将私钥保存为PEM文件
-# with open("private_key.pem", "wb") as f:
-#     print('private_key:',private_key)
-#     f.write(private_key.private_bytes(
-#         encoding=serialization.Encoding.PEM,
-#         format=serialization.PrivateFormat.TraditionalOpenSSL,
-#         encryption_algorithm=serialization.NoEncryption()
-#     ))
+# AES-GCM + nonce + aes_key decryption function
+@app.route('/decrypt', methods=['POST'])
+def decrypt():
+    data = request.get_json(force=True)
+    if not all(k in data for k in ('encrypted_message', 'nonce', 'signature', 'timestamp', 'sender_id', 'receiver_id')):
+        abort(400, description="Missing required fields for decryption.")
 
-# # 将公钥保存为PEM文件
-# with open("public_key.pem", "wb") as f:
-#     f.write(public_key.public_bytes(
-#         encoding=serialization.Encoding.PEM,
-#         format=serialization.PublicFormat.SubjectPublicKeyInfo
-#     ))
+    sender = USERS.get(data['sender_id'])
+    receiver = authenticate(data['receiver_id'])
+    if not sender or not receiver:
+        abort(401, description="Invalid sender or receiver.")
 
-# API endpoint for encrypting messages using RSA public key encryption and AES for the message itself
-@app.route('/api/encrypt', methods=['POST'])
-def encrypt_message():
-    # Expecting 'message' and 'public_key_pem' in the request
-    print("test")
-    data = request.json
-    print("data",data)
-    message = data['message']
-    print("message",message)
-    #public_key_pem = data['public_key_pem'].encode()
-    
-    # Deserialize the public key from PEM format
-    # public_key = serialization.load_pem_public_key(public_key_pem)
-    # Generate a random AES key for symmetric encryption of the message
-    aes_key = os.urandom(32)  # 256 bits key
-    # Encrypt the AES key with the public RSA key
-    encrypted_aes_key = public_key.encrypt(
-        aes_key,
+    try:
+        encrypted_message = bytes.fromhex(data['encrypted_message'])
+        nonce = bytes.fromhex(data['nonce'])
+        signature = bytes.fromhex(data['signature'])
+        timestamp = data['timestamp'].encode('utf-8')
+
+        # Verify the timestamp is within the allowed time window
+        message_datetime = datetime.datetime.fromisoformat(data['timestamp'])
+        if datetime.datetime.utcnow() - message_datetime > TIME_WINDOW:
+            abort(400, description="Message timestamp is outside of the allowed window.")
+
+        # Verify the signature including the timestamp
+        public_key.verify(
+            signature,
+            encrypted_message + timestamp,
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+            hashes.SHA256()
+        )
+
+        # Decrypt the message
+        aesgcm = AESGCM(aes_key)
+        decrypted_message = aesgcm.decrypt(nonce, encrypted_message, timestamp)
+
+        return jsonify({
+            'decrypted_message': decrypted_message.decode('utf-8'),
+            'sender': sender['username'],
+            'receiver': receiver['username']
+        }), 200
+    except Exception as e:
+        logging.error(f"Decryption failed: {e}")
+        abort(500, description="Decryption failed.")
+
+
+# RSA public key encryption function
+@app.route('/rsa_encrypt', methods=['POST'])
+# RSA public key encryption function with signature
+def rsa_encrypt_with_signature(public_key, private_key, plaintext):
+    """
+    Encrypts plaintext using RSA public key and signs the encrypted message.
+
+    :param public_key: RSA public key for encryption.
+    :param private_key: RSA private key for signing.
+    :param plaintext: The plaintext message to encrypt.
+    :return: Encrypted data as bytes, signature as bytes.
+    """
+    # Encrypt plaintext using RSA-OAEP
+    encrypted_data = public_key.encrypt(
+        plaintext.encode('utf-8'),
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None
         )
     )
-
-    # Encrypt the actual message with AES in CFB mode
-    iv = os.urandom(16)  # Initialization vector for AES
-    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    encrypted_message = encryptor.update(message.encode()) + encryptor.finalize()
-
-    bencrypted_message = base64.b64encode(encrypted_message).decode('utf-8')
-    bencrypted_aes_key = base64.b64encode(encrypted_aes_key).decode('utf-8')
-    biv = base64.b64encode(iv).decode('utf-8')
-    
-    # Return the encrypted AES key, IV, and the encrypted message
-    # Note: In practice, these should be encoded or serialized before sending
-    return jsonify({
-        "encrypted_aes_key": bencrypted_aes_key,
-        "iv": biv,
-        "encrypted_message": bencrypted_message
-    })
-    
-    
-# API endpoint for decrypting messages using RSA private key for the AES key and then decrypting the message with AES
-@app.route('/api/decrypt', methods=['POST'])
-def decrypt_message():
-    # Expecting 'encrypted_aes_key', 'iv', and 'encrypted_message' in the request
-    data = request.json
-    encrypted_aes_key = data['encrypted_aes_key']
-    iv = data['iv']
-    encrypted_message = data['encrypted_message']
-    
-    # Deserialize the private key from PEM format stored in config
-    private_key_pem = app.config['PRIVATE_KEY'].encode()
-    private_key = serialization.load_pem_private_key(private_key_pem, password=None)
-
-    # Decrypt the AES key using the private RSA key
-    aes_key = private_key.decrypt(
-        encrypted_aes_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-
-    # Decrypt the actual message with AES using the decrypted AES key
-    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-    decrypted_message = decryptor.update(encrypted_message) + decryptor.finalize()
-
-    # Return the decrypted message
-    # Note: Ensure proper encoding and decoding of the message and keys
-    return jsonify({"decrypted_message": decrypted_message.decode()})
-
-# API endpoint for signing a message using the RSA private key
-@app.route('/api/sign', methods=['POST'])
-def sign_message():
-    # Expecting 'message' in the request
-    data = request.json
-    message = data['message']
-    
-    # Deserialize the private key from PEM format stored in config
-    private_key_pem = app.config['PRIVATE_KEY'].encode()
-    private_key = serialization.load_pem_private_key(private_key_pem, password=None)
-
-    # Sign the message using the RSA private key with PSS padding and SHA-256 hashing
+    # Sign the encrypted data
     signature = private_key.sign(
-        message.encode(),
+        encrypted_data,
         padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()),
             salt_length=padding.PSS.MAX_LENGTH
         ),
         hashes.SHA256()
     )
+    return encrypted_data, signature
 
-    # Return the signature
-    # Note: The signature should be properly encoded before sending if it's binary data
-    return jsonify({"signature": signature})
 
-# API endpoint for verifying a signature of a message using the RSA public key
-@app.route('/api/verify', methods=['POST'])
-def verify_signature():
-    # Expecting 'message', 'signature', and optionally 'public_key_pem' in the request
-    data = request.json
-    message = data['message']
-    signature = data['signature']
-    public_key_pem = data.get('public_key_pem', app.config['PUBLIC_KEY']).encode()  # Use provided or default public key
+# RSA private key decryption function with signature verification
+def rsa_decrypt_with_signature(public_key, private_key, encrypted_data, signature):
+    """
+    Decrypts data using RSA private key and verifies the signature.
 
-    # Deserialize the public key from PEM format
-    public_key = serialization.load_pem_public_key(public_key_pem)
+    :param public_key: RSA public key for signature verification.
+    :param private_key: RSA private key for decryption.
+    :param encrypted_data: The encrypted data to decrypt.
+    :param signature: The signature to verify.
+    :return: Decrypted plaintext as a string.
+    """
+    # Verify the signature
+    public_key.verify(
+        signature,
+        encrypted_data,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    # Decrypt the data using RSA-OAEP
+    decrypted = private_key.decrypt(
+        encrypted_data,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return decrypted.decode('utf-8')
 
-    # Attempt to verify the signature of the message using the public key
+
+def rsa_encrypt(public_key, data):
+    try:
+        encrypted = public_key.encrypt(
+            data,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        return encrypted
+    except Exception as e:
+        return f"Unexpected error - {str(e)}"
+
+
+def rsa_decrypt(private_key, encrypted_data):
+    try:
+        decrypted = private_key.decrypt(
+            encrypted_data,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        return decrypted.decode('utf-8')
+    except InvalidKey:
+        return "Invalid key"
+    except ValueError:
+        return "Invalid key or decryption failure"
+    except UnicodeDecodeError:
+        return "Failed to decode"
+    except Exception as e:
+        return f"Unexpected error - {str(e)}"
+
+
+def verify_signature(public_key, data, signature):
     try:
         public_key.verify(
             signature,
-            message.encode(),
+            data,
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH
             ),
             hashes.SHA256()
         )
-        # If verification is successful
-        return jsonify({"verified": True})
+        return "Signature verified successfully"
+    except InvalidSignature:
+        return "Signature verification failed"
     except Exception as e:
-        # If verification fails, return False with an error message
-        return jsonify({"verified": False, "error": str(e)})
+        return f"Unexpected error - {e}"
 
-# Main entry point to run the Flask application
+
+def sign(private_key, data):
+    try:
+        signature = private_key.sign(
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return signature
+    except InvalidSignature:
+        return None
+
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5432)  # Run the app on port 5432 with debug mode enabled
+    app.run(ssl_context='adhoc')
