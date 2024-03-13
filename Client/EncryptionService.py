@@ -8,9 +8,12 @@ import os
 from config import Config  # Configuration class from config.py
 from cryptography.hazmat.backends import default_backend  # Explicitly import the default backend
 import base64
+from flask import Flask
+from flask_cors import CORS
 
 # Initialize Flask application
 app = Flask(__name__)                         
+CORS(app)  # 这将允许所有域名跨域访问
 
 # Load configurations from Config class in config.py
 app.config.from_object(Config)
@@ -18,26 +21,6 @@ app.config.from_object(Config)
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-
-# # Load private and public keys from configurations, assuming they are stored as PEM-formatted strings
-# try:
-#     private_key = serialization.load_pem_private_key(
-#         app.config['PRIVATE_KEY'].encode(),
-#         password=None,  # Assuming the private key is not encrypted
-#         backend=default_backend()  # Specify the backend explicitly
-#     )
-# except ValueError as e:
-#     print(f"Error loading private key: {e}")
-#     private_key = None  # Handle the error appropriately
-
-# try:
-#     public_key = serialization.load_pem_public_key(
-#         app.config['PUBLIC_KEY'].encode(),
-#         backend=default_backend()  # Specify the backend explicitly
-#     )
-# except ValueError as e:
-#     print(f"Error loading public key: {e}")
-#     public_key = None  # Handle the error appropriately
 
 # 加载私钥
 with open("private_key.pem", "rb") as key_file:
@@ -103,21 +86,6 @@ if pem_private is not None and pem_public is not None:
 else:
     print("Failed to generate keys.")
 
-# # 将私钥保存为PEM文件
-# with open("private_key.pem", "wb") as f:
-#     print('private_key:',private_key)
-#     f.write(private_key.private_bytes(
-#         encoding=serialization.Encoding.PEM,
-#         format=serialization.PrivateFormat.TraditionalOpenSSL,
-#         encryption_algorithm=serialization.NoEncryption()
-#     ))
-
-# # 将公钥保存为PEM文件
-# with open("public_key.pem", "wb") as f:
-#     f.write(public_key.public_bytes(
-#         encoding=serialization.Encoding.PEM,
-#         format=serialization.PublicFormat.SubjectPublicKeyInfo
-#     ))
 
 # API endpoint for encrypting messages using RSA public key encryption and AES for the message itself
 @app.route('/api/encrypt', methods=['POST'])
