@@ -34,9 +34,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
 <script>
-// TODO: Add something to show if a user is online?
+// TODO: Add something to show if a user is online
+// TODO: make an option on homepage to clear (overwrite with 0's first) the local storage
+// TODO: add an option to clear the history for a certain chat
 
-window.onload = function() {  // TODO: make an option somewhere to clear the local storage
+// TODO: add a checkbox for if messages should be saved to local storage
+
+window.onload = function() {  
     const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
     savedMessages.forEach(message => {
         if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
