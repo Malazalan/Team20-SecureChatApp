@@ -12,7 +12,7 @@ from flask import Flask
 from flask_cors import CORS
 
 # Initialize Flask application
-app = Flask(__name__)
+app = Flask(__name__)                         
 CORS(app)  # 这将允许所有域名跨域访问
 
 # Load configurations from Config class in config.py
@@ -36,10 +36,9 @@ with open("public_key.pem", "rb") as key_file:
         key_file.read(),
         backend=default_backend()
     )
-
+    
 # Load the secret key from configuration for additional operations (not used in this code snippet)
 secret_key = app.config['SECRET_KEY']
-
 
 # Function to generate a new RSA key pair
 def generate_keys():
@@ -71,8 +70,7 @@ def generate_keys():
     except Exception as e:
         print(f"Error generating keys: {e}")
         return None, None
-
-
+    
 # Generate keys
 pem_private, pem_public = generate_keys()
 
@@ -81,7 +79,7 @@ if pem_private is not None and pem_public is not None:
     # Save the serialized private key to a PEM file
     with open("private_key.pem", "wb") as f:
         f.write(pem_private)
-
+    
     # Save the serialized public key to a PEM file
     with open("public_key.pem", "wb") as f:
         f.write(pem_public)
@@ -95,11 +93,11 @@ def encrypt_message():
     # Expecting 'message' and 'public_key_pem' in the request
     print("test")
     data = request.json
-    print("data", data)
+    print("data",data)
     message = data['message']
-    print("message", message)
-    # public_key_pem = data['public_key_pem'].encode()
-
+    print("message",message)
+    #public_key_pem = data['public_key_pem'].encode()
+    
     # Deserialize the public key from PEM format
     # public_key = serialization.load_pem_public_key(public_key_pem)
     # Generate a random AES key for symmetric encryption of the message
@@ -123,7 +121,7 @@ def encrypt_message():
     bencrypted_message = base64.b64encode(encrypted_message).decode('utf-8')
     bencrypted_aes_key = base64.b64encode(encrypted_aes_key).decode('utf-8')
     biv = base64.b64encode(iv).decode('utf-8')
-
+    
     # Return the encrypted AES key, IV, and the encrypted message
     # Note: In practice, these should be encoded or serialized before sending
     return jsonify({
@@ -131,8 +129,8 @@ def encrypt_message():
         "iv": biv,
         "encrypted_message": bencrypted_message
     })
-
-
+    
+    
 # API endpoint for decrypting messages using RSA private key for the AES key and then decrypting the message with AES
 @app.route('/api/decrypt', methods=['POST'])
 def decrypt_message():
@@ -141,7 +139,7 @@ def decrypt_message():
     encrypted_aes_key = data['encrypted_aes_key']
     iv = data['iv']
     encrypted_message = data['encrypted_message']
-
+    
     # Deserialize the private key from PEM format stored in config
     private_key_pem = app.config['PRIVATE_KEY'].encode()
     private_key = serialization.load_pem_private_key(private_key_pem, password=None)
@@ -165,14 +163,13 @@ def decrypt_message():
     # Note: Ensure proper encoding and decoding of the message and keys
     return jsonify({"decrypted_message": decrypted_message.decode()})
 
-
 # API endpoint for signing a message using the RSA private key
 @app.route('/api/sign', methods=['POST'])
 def sign_message():
     # Expecting 'message' in the request
     data = request.json
     message = data['message']
-
+    
     # Deserialize the private key from PEM format stored in config
     private_key_pem = app.config['PRIVATE_KEY'].encode()
     private_key = serialization.load_pem_private_key(private_key_pem, password=None)
@@ -190,7 +187,6 @@ def sign_message():
     # Return the signature
     # Note: The signature should be properly encoded before sending if it's binary data
     return jsonify({"signature": signature})
-
 
 # API endpoint for verifying a signature of a message using the RSA public key
 @app.route('/api/verify', methods=['POST'])
@@ -220,7 +216,6 @@ def verify_signature():
     except Exception as e:
         # If verification fails, return False with an error message
         return jsonify({"verified": False, "error": str(e)})
-
 
 # Main entry point to run the Flask application
 if __name__ == '__main__':
