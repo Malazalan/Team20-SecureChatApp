@@ -21,8 +21,10 @@ class User:
     def get_id(self):
         return self.username
     
-    def get_browser_fingerprint(self):
-        return self.browser_fingerprint
+    def validate_fingerprint(self, fingerprint):
+        print(f"{fingerprint} == {self.browser_fingerprint}")
+        return True if fingerprint == self.browser_fingerprint else False
+            
     
     def password_correct(self, password_to_check):
         return check_password_hash(self.password, password_to_check)

@@ -51,12 +51,14 @@ def login_function():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        browser_fingerprint = request.form.get('browserFingerprint')
         if username and password:
             user = get_user(username)
             if user is not None:
-                if user.password_correct(password):
-                    login_user(user)
-                    return redirect(url_for('home_page'))
+                if user.validate_fingerprint(browser_fingerprint): #TODO: failure message
+                    if user.password_correct(password):
+                        login_user(user)
+                        return redirect(url_for('home_page'))
     return redirect(url_for('login_page')) # TODO: add failure message?
 
 @app.route('/register/<target_user>/<invite_id>')
@@ -73,9 +75,9 @@ def register_function():
     if request.method == 'POST':
         password = request.form.get('password')
 
-        browser_fingerprint = request.form.get('browserFingerprint') #TODO: make the fingerprint secure - if you steal someones password
-        username = request.headers.get('Referer').split('/')[-2]          # and browser fingerprint, can log into their account on 
-        email = "bleh@gmail.com"                                          # different device 
+        browser_fingerprint = request.form.get('browserFingerprint') 
+        username = request.headers.get('Referer').split('/')[-2]          
+        email = "bleh@gmail.com"                                         
         
         user = get_user(username)
         if user is None:  
