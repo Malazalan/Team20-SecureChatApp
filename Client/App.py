@@ -72,11 +72,14 @@ def register_page(target_user, invite_id):
 def register_function():
     if request.method == 'POST':
         password = request.form.get('password')
-        username = request.headers.get('Referer').split('/')[-2]
-        email = "bleh@gmail.com"
+
+        browser_fingerprint = request.form.get('browserFingerprint') #TODO: make the fingerprint secure - if you steal someones password
+        username = request.headers.get('Referer').split('/')[-2]          # and browser fingerprint, can log into their account on 
+        email = "bleh@gmail.com"                                          # different device 
+        
         user = get_user(username)
         if user is None:  
-            Database.write_user(username, email, password)
+            Database.write_user(username, email, password, browser_fingerprint)
             Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
             user = get_user(username)
             if user is not None:

@@ -65,6 +65,7 @@ def add_user():
         invite_id = "temp_key" # TODO: make this an encrypted string that only the server can decrypt. This should be 
         Database.write_invite(new_username, invite_id)  # unique to the invite - probably the username+timestamp encrypted
                                                         # in a way only the server can decrypt
+        print(f"http://127.0.0.1:5000/register/{new_username}/{invite_id}")
     else:
         print("error handling")
         add_user() #TODO: this is bad, could lead to an infinite loop
@@ -72,7 +73,7 @@ def add_user():
 
 
 
-
+add_user()
 
 
 

@@ -8,9 +8,20 @@
     <form method = "POST" action="/register_submit"> 
             <label>Enter New Password:</label>
             <input type="text" name="password">
-        </div>
+            <input type="hidden" name="browserFingerprint" id="browserFingerprint">
         <button type="submit">Submit</button>
     </form>
-
 </body>
+
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4.2.2/dist/fp.min.js"></script>
+<script>
+    FingerprintJS.load()
+      .then(fp => fp.get())
+      .then(result => {
+        const visitorId = result.visitorId;
+        document.getElementById('browserFingerprint').value = visitorId;
+        console.log(visitorId);
+      });
+  </script>
+
 </html>

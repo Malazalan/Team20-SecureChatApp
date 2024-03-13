@@ -15,13 +15,14 @@ invites = database.get_collection("invites")
 
 #TODO: code a killswitch function that overwrites all the data in the database with 0's 
 
-def write_user(username, email, password):
+def write_user(username, email, password, browser_fingerprint):
     password_hash = generate_password_hash(password)
    
     try:
         users.insert_one({'_id': username, 
                         'email': email,
-                        'password': password_hash
+                        'password': password_hash,
+                        'browser_fingerprint': browser_fingerprint
                         })
     except DuplicateKeyError:
         print(f"Error: user with username '{username}' already exists")
@@ -48,7 +49,7 @@ def invite_exists(username):
     return invite if invite else None
 
 def remove_invite(username):
-    result = invites.delete_one({'_id': username})
+    result = invites.delete_one({'_id': username}) #TODO: make this overwrite the entry with 0's first before deleting it?
     return (True if result.deleted_count == 1 else False)  
 
 
@@ -61,9 +62,9 @@ def get_user_ids(user):
             user_ids.append(current_id)
     return user_ids
 
-for current_username in ["Alice","Bob", "Charlie", "Dennis", "Eric", "Fatima"]:
+'''for current_username in ["Alice","Bob", "Charlie", "Dennis", "Eric", "Fatima"]:
     if get_user(current_username) is None:
-        write_user(current_username, f"{current_username}@gmail.com", "password")
+        write_user(current_username, f"{current_username}@gmail.com", "password")'''
 
 if get_user("John") is None:
-    write_user("John", "john@gmail.com", "password")
+    write_user("John", "john@gmail.com", "password", "dd0f79906884a7ec52515f2f2e3846f5")
