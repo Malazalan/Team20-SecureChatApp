@@ -1,16 +1,19 @@
+import binascii
 import select
 import socket
 import threading
 import signal
 import sys
 import time
+
+from EncryptionService import rsa_decrypt, get_private_key
 from Message import *
 from Header import *
 
-MAX_PACKET_LENGTH = 12
+MAX_PACKET_LENGTH = 256
 MAX_RECONN = 15
-server_ip = "194.164.20.210"
-#server_ip = "127.0.0.1"
+# server_ip = "194.164.20.210"
+# server_ip = "127.0.0.1"
 server_port = 54321
 
 keepRunning = True  # Flag to control the execution flow
@@ -20,6 +23,19 @@ socket_mutex = threading.Lock()
 messages = []
 
 
+def hex_print(data):
+    print(binascii.hexlify(data))
+
+
+def set_keep_running(status):
+    global keepRunning
+    keepRunning = status
+
+
+def get_keep_running():
+    return keepRunning
+
+
 def signal_handler(sig, frame):
     global keepRunning
     with stdout_mutex:
@@ -27,7 +43,7 @@ def signal_handler(sig, frame):
     keepRunning = False
 
 
-def server_listen_handler():
+def server_listen_handler(private_key):
     global keepRunning
 
     print("Starting listener")
@@ -47,26 +63,24 @@ def server_listen_handler():
             print("Ready to read")
             server_socket, _ = listen_socket.accept()
             print("Client accepted")
-            header = bytes_to_header(server_socket.recv(HEADER_LENGTH, 0))
-            print(f"Header:\nType - {header.type}\nPackets - {header.number_of_packets}")
+            message_header = bytes_to_header(server_socket.recv(HEADER_LENGTH, 0))
+            metadata_header = bytes_to_header(server_socket.recv(HEADER_LENGTH, 0))
+            print(f"Message header:\nType - {message_header.type}\nPackets - {message_header.number_of_packets}")
+            print(f"Metadata header:\nType - {metadata_header.type}\nPackets - {metadata_header.number_of_packets}\n")
             message = b""
-            for packet_num in range(0, header.number_of_packets):
+            for packet_num in range(0, message_header.number_of_packets):
                 packet = server_socket.recv(MAX_PACKET_LENGTH, 0)
                 message += packet
-            split_message = message.decode('utf-8').split(chr(31))
-            messages.append(split_message)
-            #for thing in split_message:
-                #print(thing)
+
+            messages.append(decrypt_wrapper(private_key, message).split(chr(30)))
         else:
             if not keepRunning:
                 break
 
-    print("Listen closed")
     listen_socket.close()
 
 
-
-def server_send_handler(message_to_send, message_type):
+def server_send_handler(message_to_send, metadata_to_send, message_type, server_ip):
     with socket_mutex:
         attempts = 1
         while attempts < MAX_RECONN:
@@ -74,24 +88,32 @@ def server_send_handler(message_to_send, message_type):
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.settimeout(1)
             try:
-                #print(f"Connecting to server")
+                print(f"Connecting to server {server_ip}:{server_port}")
                 server.connect((server_ip, server_port))
 
                 # Tell the server to expect len(message_to_send) chunks
-                # len(message_to_send) should be an integer turned into bytes that is exactly MAX_PACKET_LENGTH bytes long
                 message_header = Header(message_type, len(message_to_send))
-
                 message_length = len(message_to_send).to_bytes(MAX_PACKET_LENGTH, byteorder='little')
-                #server.send(message_length)
-                #print(f"Sending header")
+                # server.send(message_length)
                 server.send(message_header.get_header_bytes())
 
-                count = 1
+                metadata_header = Header(Message_Type.METADATA, len(metadata_to_send))
+                print(metadata_header.get_header_bytes())
+                server.send(metadata_header.get_header_bytes())
+
+                count = 0
                 for message in message_to_send:
                     count += 1
                     server.send(message)
+                    print(f"Sent message {count}/{len(message_to_send)}")
+                print(f"Message sent\n")
 
-                #print(f"Message sent!")
+                count = 0
+                for metadata in metadata_to_send:
+                    count += 1
+                    server.send(metadata)
+                    print(f"Sent metadata {count}/{len(metadata_to_send)}")
+                print(f"Metadata sent\n")
             except socket.timeout:
                 print(f"Retry {attempts}/{MAX_RECONN}")
                 sent = False
@@ -105,16 +127,13 @@ def server_send_handler(message_to_send, message_type):
                     attempts += 1
 
 
-
-def prepare_message(sender, target, data, target_public_key, server_public_key, message_type):
+def prepare_message(sender, target, data, target_public_key, server_public_key, message_type, server_ip):
     message_signature = "ADD THE SIGNATURE STUFF"
     message_to_send = Message(data, target, sender, "")
 
-    full_message_to_send = message_to_send.form_message(target_public_key, server_public_key)
+    message, metadata = form_message_blocks(message_to_send, MAX_PACKET_LENGTH, target_public_key, server_public_key)
 
-    bytes_full_message_to_send = form_message_blocks(full_message_to_send, MAX_PACKET_LENGTH)
-
-    server_send_handler(bytes_full_message_to_send, message_type)
+    server_send_handler(message, metadata, message_type, server_ip)
 
 
 if __name__ == '__ain__':
@@ -122,14 +141,14 @@ if __name__ == '__ain__':
     listenThread = threading.Thread(target=server_listen_handler)
     listenThread.start()
 
-
     signal.signal(signal.SIGINT, signal_handler)
 
     # Security initialisation
 
     # Test stuff
     # Text test
-    writeThread = threading.Thread(target=prepare_message, args=("John", "Alan", f"Hello World!", "", "", Message_Type.TEXT))
+    writeThread = threading.Thread(target=prepare_message,
+                                   args=("John", "Alan", f"Hello World!", "", "", Message_Type.TEXT))
     writeThread.start()
 
     listenThread.join()
