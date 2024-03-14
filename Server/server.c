@@ -137,7 +137,7 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
             }
         }
 
-        printf("Sent %s\n", buffer);
+        //printf("Sent %s\n", buffer);
         send(sockfd, buffer, MAX_PACKET_LENGTH, 0);
         secureFreeString((char*) buffer);
     }
@@ -206,9 +206,9 @@ int main(int argc, char * argv[]) {
     Joe->username = malloc(strlen("Joe"));
     strncpy(Joe->username, "Joe", 4);
     Joe->usernameSize = strlen("Joe") + 1;
-    Joe->IP = malloc(strlen("192.168.212.198")); //TODO change to his public IP
-    strncpy(Joe->IP, "192.168.212.198", strlen("192.168.212.198") + 10);
-    Joe->IPSize = strlen("192.168.212.198") + 1;
+    Joe->IP = malloc(strlen("127.0.0.1")); //TODO change to his public IP
+    strncpy(Joe->IP, "127.0.0.1", strlen("127.0.0.1") + 10);
+    Joe->IPSize = strlen("127.0.0.1") + 1;
 
     allClients[0] = Alan;
     allClients[1] = Joe;
