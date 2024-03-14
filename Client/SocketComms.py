@@ -141,6 +141,7 @@ def server_send_handler(message_to_send, metadata_to_send, message_type, server_
 
                 if message_header.type == Message_Type.FILE:
                     file_metadata_header = Header(Message_Type.METADATA, len(message.data))
+                    print(file_metadata_header.get_header_bytes())
                     server.send(file_metadata_header.get_header_bytes())
                     print("file here")
 
@@ -187,8 +188,6 @@ def prepare_message(sender, target, data, target_public_key, server_public_key, 
             file_bytes = file.read()
         #print(f"Data 1 - {file_bytes}")
         message_signature = sign(file_bytes)
-        while bytes([30]) in message_signature:
-            message_signature = sign(file_bytes)
         print(message_signature)
         message_to_send = MessageFile(data, target, sender, message_signature)
 
