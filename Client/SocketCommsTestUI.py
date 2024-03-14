@@ -35,7 +35,7 @@ def clear_screen():
 
 
 def redraw_UI():
-    #clear_screen()
+    clear_screen()
     for message in messages:
         print(f"{message[2]}\n{message[0]}\n")
     print(f"\n\n\n{sender}:    ")
@@ -47,6 +47,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     _, sender, target, server_ip = sys.argv  # Unpack the arguments
+    print(f"Sender - {sender}")
 
     listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(),))
     listen_thread.start()
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     redraw_UI()
 
     tempThread = threading.Thread(target=prepare_message,
-                                  args=(sender, target, "TestImg.jpg", get_public_key(), get_server_public_key(),
+                                  args=(target, sender, "TestImg.jpg", get_public_key(), get_server_public_key(),
                                         Message_Type.FILE, server_ip))
     tempThread.start()
     tempThread.join()
@@ -73,7 +74,7 @@ if __name__ == "__main__":
         try:
             user_input = input_queue.get_nowait()
             writeThread = threading.Thread(target=prepare_message,
-                                           args=(sender, target, user_input, get_public_key(), get_server_public_key(),
+                                           args=(target, sender, user_input, get_public_key(), get_server_public_key(),
                                                  Message_Type.TEXT, server_ip))
             writeThread.start()
             messages.append([user_input, "", sender])
