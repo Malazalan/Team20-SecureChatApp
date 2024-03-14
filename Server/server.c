@@ -68,10 +68,11 @@ void convertHeaderToBytes(struct Header header, unsigned char* headerBytes) {
     for (int i = 0; i < HEADER_LENGTH; i++) {
         printf("%02X ", headerBytes[i]);
     }
+    printf("-> ");
 }
 
 void handleWrite(char* address, struct Header * messageHeader, struct Header * metadataHeader,
-        const unsigned char* messageToSend, const unsigned char* metadataToSend) {
+        struct Header * fileMetadataHeader, const unsigned char* messageToSend, const unsigned char* metadataToSend) {
     int sockfd;
     struct sockaddr_in clientAddr;
 
@@ -102,6 +103,13 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
     printf("Sending metadata header\n");
     send(sockfd, headerBytes, HEADER_LENGTH, 0);
 
+    if (fileMetadataHeader->numberOfPackets > 0) {
+        // Send file metadata header
+        convertHeaderToBytes(*fileMetadataHeader, headerBytes);
+        printf("Sending file metadata header\n");
+        send(sockfd, headerBytes, HEADER_LENGTH, 0);
+    }
+
     // Send the packets
     printf("Sending message\n");
     //printf("Preparing %s\n", messageToSend);
@@ -129,7 +137,7 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
             }
         }
 
-        //printf("Sent %s\n", buffer);
+        printf("Sent %s\n", buffer);
         send(sockfd, buffer, MAX_PACKET_LENGTH, 0);
         secureFreeString((char*) buffer);
     }
@@ -280,11 +288,25 @@ int main(int argc, char * argv[]) {
             int_metadata_packets |= (num_metadata_packets[i] & 0xFF) << ((i-1) * 8);
         }
 
+        unsigned char num_file_metadata_packets[HEADER_LENGTH];
+        int int_file_metadata_packets = 0;
+        if (messageType == file) {
+            printf("Receive file metadata header\n");
+            if (recv(new_client, num_file_metadata_packets, HEADER_LENGTH, 0) < 0) {
+                perror("Error receiving number of packets");
+                exit(EXIT_FAILURE);
+            }
+            for (int i = 1; i < HEADER_LENGTH; i++) {
+                int_file_metadata_packets |= (num_file_metadata_packets[i] & 0xFF) << ((i-1) * 8);
+            }
+            printf("The file is %d bytes long\n", int_file_metadata_packets);
+        }
+
         printf("Expecting %d message packets\nExpecting %d metadata packets\n", int_message_packets, int_metadata_packets);
 
         unsigned char* receivedMessage = malloc(int_message_packets * MAX_PACKET_LENGTH);
         int nextChar = 0;
-        printf("Saved message\n");
+        //printf("Saved message\n");
         for (int message_id = 0; message_id < int_message_packets; message_id++) {
             if (recv(new_client, buffer, MAX_PACKET_LENGTH, 0) < 0) {
                 perror("Error receiving message contents");
@@ -293,11 +315,11 @@ int main(int argc, char * argv[]) {
             for (int charNum = 0; charNum < MAX_PACKET_LENGTH; charNum++) {
                 receivedMessage[nextChar] = buffer[charNum];
                 nextChar++;
-                printf("%d", buffer[charNum]);
+                //printf("%d", buffer[charNum]);
             }
             //printf("%s", buffer);
         }
-        printf("\nSaved message\n%d\n", receivedMessage);
+        //printf("\nSaved message\n%d\n", receivedMessage);
         char* receivedMetadata = malloc(int_metadata_packets * MAX_PACKET_LENGTH);
         nextChar = 0;
         for (int message_id = 0; message_id < int_metadata_packets; message_id++) {
@@ -331,6 +353,10 @@ int main(int argc, char * argv[]) {
         metadataHeader.numberOfPackets = int_metadata_packets;
         metadataHeader.messageType = 0;
 
+        struct Header fileMetadataHeader;
+        fileMetadataHeader.numberOfPackets = int_file_metadata_packets;
+        metadataHeader.messageType = 0;
+
         printf("\n\n");
 
         int metadataLen = 0;
@@ -360,7 +386,7 @@ int main(int argc, char * argv[]) {
                 if (strcmp(tokens[1], allClients[i]->username) == 0) {
                     printf("Metadata -> %s\n", metadataToSend);
 
-                    handleWrite(allClients[i]->IP, &messageHeader, &metadataHeader,
+                    handleWrite(allClients[i]->IP, &messageHeader, &metadataHeader, &fileMetadataHeader,
                                receivedMessage, (unsigned char*)metadataToSend);
                     break;
                 }
