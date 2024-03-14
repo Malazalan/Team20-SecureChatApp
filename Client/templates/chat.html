@@ -46,6 +46,30 @@
         button:hover {
             background-color: #0056b3;
         }
+
+        /* Styling for file upload */
+        .custom-file-input {
+            color: transparent;
+        }
+
+        .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+        }
+
+        .custom-file-input::before {
+            content: 'Select file';
+            color: #fff;
+            display: inline-block;
+            background: #007bff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .custom-file-input:hover::before {
+            background: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -63,8 +87,14 @@
 
         <br>
 
+        <!-- File upload form -->
         <form id="send_message_form">
             <input type="text" id="message_input" placeholder="Message:">
+            <!-- File upload input -->
+            <label class="custom-file-input">
+                <input type="file" id="file_input" style="display:none;">
+            </label>
+            <!-- Send button -->
             <button type="submit">Send</button>
         </form>
 
@@ -95,18 +125,25 @@
         });
 
         let message_input = document.getElementById('message_input');
+        let file_input = document.getElementById('file_input');
 
         document.getElementById('send_message_form').onsubmit = function (e) {
             e.preventDefault();
             let message = message_input.value;
-            if (message.length){
-                socket.emit('message_sent',{
+            let file = file_input.files[0]; // Get the selected file
+            if (message.length || file) {
+                socket.emit('message_sent', {
                     username: "{{current_user.username}}",
                     target: "{{target_user_id}}",
-                    message: message
+                    message: message,
+                    file: file ? { // Send file along with the message
+                        name: file.name,
+                        url: URL.createObjectURL(file)
+                    } : null
                 });
 
                 message_input.value = '';
+                file_input.value = ''; // Reset file input
             }
         };
 
@@ -117,7 +154,13 @@
 
         function appendMessage(data) {
             const newNode = document.createElement('div');
-            newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+            if (data.file) {
+                // 如果消息包含文件，则创建带有下载链接的节点
+                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
+            } else {
+                // 否则，正常显示消息
+                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+            }
             document.getElementById('messages').appendChild(newNode);
         }
 
