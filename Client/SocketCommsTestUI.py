@@ -35,9 +35,9 @@ def clear_screen():
 
 
 def redraw_UI():
-    clear_screen()
+    #clear_screen()
     for message in messages:
-        print(f"{message[2]}:    {message[0]}")
+        print(f"{message[2]}\n{message[0]}\n")
     print(f"\n\n\n{sender}:    ")
 
 
@@ -59,6 +59,13 @@ if __name__ == "__main__":
 
     num_messages = len(messages)
     redraw_UI()
+
+    tempThread = threading.Thread(target=prepare_message,
+                                  args=(sender, target, "TestImg.jpg", get_public_key(), get_server_public_key(),
+                                        Message_Type.FILE, server_ip))
+    tempThread.start()
+    tempThread.join()
+
     while get_keep_running():
         if len(messages) > num_messages:
             num_messages = len(messages)
@@ -66,7 +73,8 @@ if __name__ == "__main__":
         try:
             user_input = input_queue.get_nowait()
             writeThread = threading.Thread(target=prepare_message,
-                                           args=(sender, target, user_input, get_public_key(), get_server_public_key(), Message_Type.TEXT, server_ip))
+                                           args=(sender, target, user_input, get_public_key(), get_server_public_key(),
+                                                 Message_Type.TEXT, server_ip))
             writeThread.start()
             messages.append([user_input, "", sender])
         except queue.Empty:
