@@ -44,7 +44,25 @@
         </div>
 
         <div v-else-if="activeMenuIndex === '2'">
-          <p>Security settings content</p>
+          <div class="security-notifications">
+            <h2 class="title">Security</h2>
+            <p class="description">
+              Your conversations and calls are private to you. End-to-end encryption ensures that only you and the person you're communicating with can see your personal messages and listen to your personal calls, and nobody in between, not even this App. Message types include:
+            </p>
+            <ul class="message-types">
+              <li><img src="@/assets/icons/text-voice-messages-icon.png" alt="Text and Voice Messages" /> Text and voice messages</li>
+              <li><img src="@/assets/icons/audio-video-calls-icon.png" alt="Audio and Video Calls" /> Audio and video calls</li>
+              <li><img src="@/assets/icons/photos-videos-documents-icon.png" alt="Photos, Videos, and Documents" /> Photos, videos, and documents</li>
+              <li><img src="@/assets/icons/location-sharing-icon.png" alt="Location Sharing" /> Location sharing</li>
+              <li><img src="@/assets/icons/status-updates-icon.png" alt="Status Updates" /> Status updates</li>
+            </ul>
+            <div class="notification-setting">
+              <p>Show security notifications on this computer</p>
+              <p>
+                You will receive notifications when the security code for a contact's phone changes. If you have multiple devices, you must enable this setting on each device you want to receive notifications on. <a href="https://your-link-to-more-info.com">Learn more</a>
+              </p>
+            </div>
+          </div>
         </div>
         <div v-else-if="activeMenuIndex === '3'">
           <el-form label-position="left" label-width="110px">
@@ -220,5 +238,38 @@ export default {
 .settings-content {
   flex: 3;
   padding-left: 20px;
+}
+
+.security-notifications .title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+.security-notifications .description,
+.security-notifications .notification-setting p {
+  margin-bottom: 1rem;
+}
+.message-types {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.message-types li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem; /* Increased line spacing */
+}
+
+.message-types li img {
+  margin-right: 10px; /* Space between icon and text */
+  width: 24px; /* Icon size */
+  height: auto;
+  vertical-align:middle;
+}
+
+.notification-setting a {
+  color: #00c39a; /* Link color */
+  text-decoration:underline;
 }
 </style>
