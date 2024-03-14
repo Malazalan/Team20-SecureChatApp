@@ -239,14 +239,18 @@ def rsa_decrypt(private_key, encrypted_data):
                 label=None
             )
         )
-        return decrypted.decode('utf-8')
+        return decrypted
     except InvalidKey:
+        print("Invalid key")
         return "Invalid key"
     except ValueError:
-        return "Invalid key or decryption failure"
+        print("Decryption failure")
+        return "Decryption failure"
     except UnicodeDecodeError:
+        print("Failed to decode")
         return "Failed to decode"
     except Exception as e:
+        print(f"Unexpected error - {str(e)}")
         return f"Unexpected error - {str(e)}"
 
 
@@ -261,14 +265,14 @@ def verify_signature(public_key, data, signature):
             ),
             hashes.SHA256()
         )
-        return "Signature verified successfully"
+        return "Good sig"
     except InvalidSignature:
-        return "Signature verification failed"
+        return "Bad sig"
     except Exception as e:
         return f"Unexpected error - {e}"
 
 
-def sign(private_key, data):
+def sign(data):
     try:
         signature = private_key.sign(
             data,
