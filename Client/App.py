@@ -102,21 +102,44 @@ def load_user(username):
 @socketio.on('user_connect')
 def handle_join_room_event(data):
     app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
+    #print(Database.get_room(current_user.get_id()))
+    Database.set_room(current_user.get_id(), request.sid)
+    #print(f"REQUEST: {request.sid}")
+
+@socketio.on('disconnect')
+def handle_disconnect_event():
+    # Handle disconnection logic here
+    Database.set_room(current_user.get_id(), None)
+    #print(f"User disconnected {request.sid}")
+
 
 @socketio.on('message_sent')
 def handle_message_sent(data):
     app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']}")
-
-    try:
+    #print(f"REQUEST: {request.sid}")
+    '''try:
         #SocketComms.py stuff
         #the line below is here just as a test to see if the lines below that will fail the try 
         prepare_message("Alice", "Bob", f"{data['message']}", "", "")
         writeThread = threading.Thread(target=prepare_message, args=("Alice", "Bob", f"{data['message']}", "", ""))
         writeThread.start()
     except:
-        print("Server stuff not working")
+        print("Server stuff not working")'''
 
-    socketio.emit('recieve_message', data, room=request.sid)
+    target = get_user(data['target'])
+    if target:
+        sender_room = request.sid
+        target_room = target.current_room
+        if target_room is not None:
+            socketio.emit('recieve_message', data, room=sender_room)
+            socketio.emit('recieve_message', data, room=target_room)
+        else:
+            failure_data = data
+            failure_data['message'] = "Message failed to send, target user not online"
+            socketio.emit('recieve_message', data, room=sender_room)
+           
+            
+    
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

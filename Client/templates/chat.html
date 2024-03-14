@@ -47,6 +47,11 @@ window.onload = function() {
             console.log(message); 
             appendMessage(message);
         }
+        // TODO: Can probably do this more concisely than two if's 
+        if (message.target === "{{current_user.username}}" && message.username === "{{target_user_id}}") {
+            console.log(message); 
+            appendMessage(message);
+        }
     });
 };
 
@@ -82,8 +87,9 @@ window.onload = function() {
         const newNode = document.createElement('div');
         newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
         document.getElementById('messages').appendChild(newNode);
-    
-        saveMessageToLocalStorage(data);
+        if (data.message !== "Message failed to send, target user not online") {
+            saveMessageToLocalStorage(data);
+        }
     });
 
     function appendMessage(data) {
