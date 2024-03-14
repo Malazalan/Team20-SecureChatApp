@@ -1,10 +1,26 @@
 <template>
   <div class="sidebar">
-    <el-avatar src="https://tupian.qqw21.com/article/UploadPic/2020-2/20202312212244618.jpg" class="avatar" size="large"
-      icon="el-icon-user"></el-avatar>
-    <div class="online-status">
-      <span class="online-dot"></span>online
-    </div>
+    <el-popover placement="right" width="200" trigger="hover">
+      <div class="user-info-popover">
+        <el-avatar :src="userInfo.avatar" size="large"></el-avatar>
+        <div class="user-info">
+          <h3>{{ userInfo.name }}</h3>
+          <p>{{ userInfo.signature }}</p>
+        </div>
+      </div>
+      <el-avatar slot="reference" :src="userInfo.avatar" class="avatar" size="large"></el-avatar>
+    </el-popover>
+    <el-dropdown @command="handleStatusChange">
+      <span class="el-dropdown-link">
+        {{ isOnline ? 'Online' : 'Offline' }}
+        <i class="el-icon-arrow-down"></i>
+      </span>
+      <el-dropdown-menu slot="dropdown">
+        <el-dropdown-item command="online">Online</el-dropdown-item>
+        <el-dropdown-item command="offline">Offline</el-dropdown-item>
+      </el-dropdown-menu>
+    </el-dropdown>
+    <!-- ...其他元素... -->
     <el-menu class="menu" default-active="1" @select="$emit('select', $event)">
       <el-menu-item index="1"><i class="el-icon-message"></i> message</el-menu-item>
       <el-menu-item index="2"><i class="el-icon-s-custom"></i> list</el-menu-item>
@@ -18,6 +34,22 @@
 <script>
 export default {
   name: "Sidebar",
+  data() {
+    return {
+      userInfo: {
+        avatar: 'https://tupian.qqw21.com/article/UploadPic/2020-2/20202312212244618.jpg',
+        name: 'Vue Ninja',
+        signature: 'Coding with heart.',
+      },
+      isOnline: true,
+    };
+  },
+
+  methods: {
+    handleStatusChange(command) {
+      this.isOnline = command === 'online';
+    },
+  },
 }
 </script>
 
@@ -48,19 +80,28 @@ export default {
   bottom: 20px;
 }
 
-.online-status {
+.el-dropdown-link {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  color: #4CAF50;
-  font-size: 14px;
+  cursor: pointer;
 }
 
-.online-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #4CAF50;
-  margin-right: 5px;
+.user-info-popover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
+
+.user-info h3 {
+  margin: 10px 0 5px 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.user-info p {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
 </style>

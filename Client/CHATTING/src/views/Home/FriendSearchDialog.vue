@@ -1,4 +1,5 @@
 <template>
+
     <el-dialog :visible.sync="isVisible" title="搜索好友" @close="handleClose" width="20%"
         :custom-class="'round-dialog'">
         <el-form :model="form" :rules="rules" ref="searchForm">
@@ -13,9 +14,9 @@
     </el-dialog>
 </template>
 
+
 <script>
 import axios from 'axios';
-
 export default {
     name: "FriendSearchDialog",
     props: {
@@ -32,6 +33,7 @@ export default {
             rules: {
                 keyword: [
                     { required: true, message: '请输入手机号或姓名', trigger: 'blur' }
+
                 ]
             }
         };
@@ -52,6 +54,7 @@ export default {
             });
         },
         searchFriend() {
+
             axios.get('/search', {
                 params: {
                     keyword: this.form.keyword
@@ -74,3 +77,4 @@ export default {
     }
 };
 </script>
+
