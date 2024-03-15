@@ -13,7 +13,7 @@ from flask_cors import CORS
 
 # Initialize Flask application
 app = Flask(__name__)                         
-CORS(app)  # 这将允许所有域名跨域访问
+CORS(app)  # This will allow cross-domain access for all domains
 
 # Load configurations from Config class in config.py
 app.config.from_object(Config)
@@ -22,33 +22,20 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-# 加载私钥
-with open("private_key.pem", "rb") as key_file:
-    private_key = serialization.load_pem_private_key(
-        key_file.read(),
-        password=None,
-        backend=default_backend()
-    )
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
-# 加载公钥
-with open("public_key.pem", "rb") as key_file:
-    public_key = serialization.load_pem_public_key(
-        key_file.read(),
-        backend=default_backend()
-    )
-    
-# Load the secret key from configuration for additional operations (not used in this code snippet)
-secret_key = app.config['SECRET_KEY']
-
-# Function to generate a new RSA key pair
 def generate_keys():
     try:
         # Generate private key with RSA algorithm
         private_key = rsa.generate_private_key(
             public_exponent=65537,
             key_size=2048,  # Defines the security level of the key
+            backend=default_backend()
         )
-        print("generate private_key is:", private_key)
+        print("Generated private key.")
+
         # Generate the public key from the private key
         public_key = private_key.public_key()
 
@@ -65,15 +52,27 @@ def generate_keys():
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
-        # Return serialized keys
+        # Save the private key to a file
+        with open("private_key.pem", "wb") as priv_file:
+            priv_file.write(pem_private)
+        print("Saved private key to 'private_key.pem'.")
+
+        # Save the public key to a file
+        with open("public_key.pem", "wb") as pub_file:
+            pub_file.write(pem_public)
+        print("Saved public key to 'public_key.pem'.")
+
+        # Return serialized keys just in case they are needed
         return pem_private, pem_public
     except Exception as e:
         print(f"Error generating keys: {e}")
         return None, None
-    
-# Generate keys
-pem_private, pem_public = generate_keys()
 
+# Generate keys and save them to files
+pem_private, pem_public = generate_keys()
+    
+# Load the secret key from configuration for additional operations (not used in this code snippet)
+secret_key = app.config['SECRET_KEY']
 # Ensure the keys were generated successfully
 if pem_private is not None and pem_public is not None:
     # Save the serialized private key to a PEM file
@@ -85,7 +84,26 @@ if pem_private is not None and pem_public is not None:
         f.write(pem_public)
 else:
     print("Failed to generate keys.")
+    
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
+@app.route('/api/getprivatekey', methods=['GET'])
+def get_private_key():
+    try:
+        # Attempt to open the private key file
+        with open("private_key.pem", "rb") as key_file:
+            # Load the private key from PEM format
+            private_key = serialization.load_pem_private_key(
+                key_file.read(),
+                password=None,  # No password since the key is not encrypted
+                backend=default_backend()
+            )
+            print("private_key is:", private_key)
+            return private_key
+    except Exception as e:
+        print(f"Failed to load private key: {e}")
+        return None
 
 # API endpoint for encrypting messages using RSA public key encryption and AES for the message itself
 @app.route('/api/encrypt', methods=['POST'])
@@ -217,6 +235,7 @@ def verify_signature():
         # If verification fails, return False with an error message
         return jsonify({"verified": False, "error": str(e)})
 
+
 # Main entry point to run the Flask application
 if __name__ == '__main__':
-    app.run(debug=True, port=5432)  # Run the app on port 5432 with debug mode enabled
+    app.run(debug=True)  # Run the app on port 5432 with debug mode enabled
