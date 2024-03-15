@@ -50,8 +50,8 @@ def chat_page(target_user_id):
         return render_template('chat.html', target_user_id = target_user_id, ip_addr=ip_addr)
     return redirect(url_for('home_page'))
 
-@app.route('/login', methods = ['GET', 'POST'])
-def login_function():
+@app.route('/login', methods=['POST'])
+def login_post():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -59,11 +59,12 @@ def login_function():
         if username and password:
             user = get_user(username)
             if user is not None:
-                if user.validate_fingerprint(browser_fingerprint): 
+                if user.validate_fingerprint(browser_fingerprint):
                     if user.password_correct(password):
                         login_user(user)
                         return redirect(url_for('home_page'))
-    return redirect(url_for('login_page')) # TODO: add failure message and keep username in the box
+    # 如果登录验证失败，则重定向到登录页面，并附带 loginFailed 参数
+    return redirect(url_for('login_page', loginFailed=True))
 
 @app.route('/register/<target_user>/<invite_id>')
 def register_page(target_user, invite_id):
