@@ -69,7 +69,7 @@ def register_page(target_user, invite_id):
     if invite and invite['invite_id']==invite_id and not get_user(invite['_id']):
         return render_template('register.html', username = target_user)
     return redirect(url_for('login_page')) #TODO: need error handling telling the user it was an invalid invite?
-
+  
 @app.route('/register_submit', methods = ['GET', 'POST'])
 def register_function():
     if request.method == 'POST':
