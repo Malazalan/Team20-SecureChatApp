@@ -1,37 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Log In</title>
+    <title>Log In</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: #fff;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 50px;
+            margin-bottom: 30px;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        div {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
     <h1>Please log in</h1>
-    <form method = "POST" action="/login">
+    <form method="POST" action="/login">
         <div>
             <label>Enter your username:</label>
-            <input type="text" name="username">
+            <input type="text" name="username" required>
         </div>
         <div>
             <label>Enter Password:</label>
-            <input type="text" name="password">
+            <input type="password" name="password" required>
         </div>
         <div>
             <input type="hidden" name="browserFingerprint" id="browserFingerprint">
         </div>
         <button type="submit">Submit</button>
     </form>
-</body>
 
-<!-- As mentioned elsewhere, not sure how secure this is, as if you steal someones password and browser fingerprint 
-  you can log on from anywhere, although regardless this adds an extra layer of security. If this can be made more 
-  secure however, brilliant. -->
-  <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4.2.2/dist/fp.min.js"></script>
-  <script>
-      FingerprintJS.load()
-        .then(fp => fp.get())
-        .then(result => {
-          const visitorId = result.visitorId;
-          document.getElementById('browserFingerprint').value = visitorId;
-          console.log(visitorId);
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4.2.2/dist/fp.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            FingerprintJS.load()
+                .then(fp => fp.get())
+                .then(result => {
+                    const visitorId = result.visitorId;
+                    document.getElementById('browserFingerprint').value = visitorId;
+                    console.log(visitorId);
+                });
         });
     </script>
+</body>
 </html>

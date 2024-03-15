@@ -1,140 +1,189 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Home</title>
+    <title>Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: #fff;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        #messages {
+            margin-bottom: 20px;
+        }
+
+        #messages div {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Styling for file upload */
+        .custom-file-input {
+            color: transparent;
+        }
+
+        .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+        }
+
+        .custom-file-input::before {
+            content: 'Select file';
+            color: #fff;
+            display: inline-block;
+            background: #007bff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .custom-file-input:hover::before {
+            background: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    
-    <h1>Logged in user:{{ current_user.username }}</h1>
-    
-    <h2>Chatting with {{target_user_id}}</h2>
-    
-    <div id="messages">
-    <b>Contents of chat:</b>
-    <br>
-    <b>----------------------------------------------</b>
+    <div class="container">
+        <h1>Logged in user: {{ current_user.username }}</h1>
+        <h2>Chatting with {{ target_user_id }}</h2>
+
+        <div id="messages">
+            <b>Contents of chat:</b>
+            <br>
+            <b>----------------------------------------------</b>
+        </div>
+
+        <b>----------------------------------------------</b>
+
+        <br>
+
+        <!-- File upload form -->
+        <form id="send_message_form">
+            <input type="text" id="message_input" placeholder="Message:">
+            <!-- File upload input -->
+            <label class="custom-file-input">
+                <input type="file" id="file_input" style="display:none;">
+            </label>
+            <!-- Send button -->
+            <button type="submit">Send</button>
+        </form>
+
+        <br>
+
+        <form id="clear_messages_form">
+            <button type="submit">Clear Chat History</button>
+        </form>
+
+        <form action="/home">
+            <button type="submit">Home</button>
+        </form>
     </div>
 
-    <b>----------------------------------------------</b>
-    
-    <br> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <script>
+        window.onload = function() {
+            const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+            savedMessages.forEach(message => {
+                if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
+                    appendMessage(message);
+                }
+            });
+        };
 
-    <form id="send_message_form">
-        <input type = "text" id = "message_input" placeholder="Message:">
-        <button type="submit">Send</button>
-    </form>
-
-    <form id="send_file_form">
-        <input type="file" id="file_input" name="file_input">
-        <button type="submit">Send File</button>
-    </form>
-
-    <br>
-
-    <form action="/home">
-        <button type="submit">Home</button>
-    </form>
-
-</body>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
-
-<script>
-// TODO: Add something to show if a user is online (do this by checking the database)
-// TODO: add an option to clear the history for this chat
-// TODO: add a checkbox for if messages should be saved to local storage
-
-window.onload = function() {  
-    const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-    savedMessages.forEach(message => {
-        if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
-            console.log(message); 
-            appendMessage(message);
-        }
-        // TODO: Can probably do this more concisely than two if's 
-        if (message.target === "{{current_user.username}}" && message.username === "{{target_user_id}}") {
-            console.log(message); 
-            appendMessage(message);
-        }
-    });
-};
-
-    const socket = io.connect("{{ip_addr}}");
-    socket.on('connect', function(){
-        socket.emit('user_connect',{
-            username: "{{current_user.username}}",
-            target: "{{target_user_id}}"
-        })
-    })
-
-    let message_input = document.getElementById('message_input');
-
-    document.getElementById('send_message_form').onsubmit = function (e) {
-        e.preventDefault();
-        let message = message_input.value;//.trim();
-        if (message.length){
-            socket.emit('message_sent',{
+        const socket = io.connect("http://127.0.0.1:5000");
+        socket.on('connect', function(){
+            socket.emit('user_connect',{
                 username: "{{current_user.username}}",
-                target: "{{target_user_id}}",
-                message: message
-            })
+                target: "{{target_user_id}}"
+            });
+        });
 
-        message_input.value = '';
-        }
-    }
+        let message_input = document.getElementById('message_input');
+        let file_input = document.getElementById('file_input');
 
-    socket.on('recieve_message', function (data) {
-        console.log(data);
-        const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
-        document.getElementById('messages').appendChild(newNode);
-        if (data.message !== "Message failed to send, target user not online") {
-            saveMessageToLocalStorage(data);
-        }
-    });
-
-    socket.on('recieve_file', function (data) {
-        console.log(data);
-        const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${data.file}" download="${data.file_name}">${data.file_name}</a>`;
-        document.getElementById('messages').appendChild(newNode);
-        
-    });
-
-    function appendMessage(data) {
-        const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
-        document.getElementById('messages').appendChild(newNode);
-    }
-
-    function saveMessageToLocalStorage(message) {
-        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-        savedMessages.push(message);
-        localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
-    }
-
-</script>
-
-<script>
-    document.getElementById('send_file_form').onsubmit = function (e) {
-        e.preventDefault();
-        let file = document.getElementById('file_input');
-        if(file.files.length) {
-            var fileName = file.files[0].name;
-            var reader = new FileReader();
-            reader.onload = function(e)
-            {
-                suitable_name = e.target.result
-                socket.emit('file_sent', {
-                username: "{{current_user.username}}",
-                target: "{{target_user_id}}",
-                suitable_name: suitable_name,
-                file_name: fileName
+        document.getElementById('send_message_form').onsubmit = function (e) {
+            e.preventDefault();
+            let message = message_input.value;
+            let file = file_input.files[0]; // Get the selected file
+            if (message.length || file) {
+                socket.emit('message_sent', {
+                    username: "{{current_user.username}}",
+                    target: "{{target_user_id}}",
+                    message: message,
+                    file: file ? { // Send file along with the message
+                        name: file.name,
+                        url: URL.createObjectURL(file)
+                    } : null
                 });
-                document.getElementById('file_input').value = '';
-            };
-            reader.readAsDataURL(file.files[0]);
+
+                message_input.value = '';
+                file_input.value = ''; // Reset file input
+            }
+        };
+
+        document.getElementById('clear_messages_form').onsubmit = function (e) {
+            e.preventDefault();
+            clearChatHistory();
+        };
+
+        socket.on('recieve_message', function (data) {
+            appendMessage(data);
+            saveMessageToLocalStorage(data);
+        });
+
+        function appendMessage(data) {
+            const newNode = document.createElement('div');
+            if (data.file) {
+                // 如果消息包含文件，则创建带有下载链接的节点
+                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
+            } else {
+                // 否则，正常显示消息
+                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+            }
+            document.getElementById('messages').appendChild(newNode);
         }
-    }
+
+        function saveMessageToLocalStorage(message) {
+            let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+            savedMessages.push(message);
+            localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+        }
+
+        function clearChatHistory() {
+            localStorage.removeItem('chatMessages');
+            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
+        }
     </script>
+</body>
 </html>
