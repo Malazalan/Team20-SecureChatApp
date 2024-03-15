@@ -41,6 +41,7 @@
             padding: 10px 20px;
             cursor: pointer;
             border-radius: 4px;
+            margin-right: 10px;
         }
 
         button:hover {
@@ -100,6 +101,10 @@
 
         <br>
 
+        <form id="clear_messages_form">
+            <button type="submit">Clear Chat History</button>
+        </form>
+
         <form action="/home">
             <button type="submit">Home</button>
         </form>
@@ -147,6 +152,11 @@
             }
         };
 
+        document.getElementById('clear_messages_form').onsubmit = function (e) {
+            e.preventDefault();
+            clearChatHistory();
+        };
+
         socket.on('recieve_message', function (data) {
             appendMessage(data);
             saveMessageToLocalStorage(data);
@@ -168,6 +178,11 @@
             let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
             savedMessages.push(message);
             localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+        }
+
+        function clearChatHistory() {
+            localStorage.removeItem('chatMessages');
+            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
         }
     </script>
 </body>
