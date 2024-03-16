@@ -15,14 +15,15 @@ invites = database.get_collection("invites")
 
 #TODO: code a killswitch function that overwrites all the data in the database with 0's 
 
-def write_user(username, email, password, browser_fingerprint):
+def write_user(username, email, password, browser_fingerprint, current_room=None):
     password_hash = generate_password_hash(password)
    
     try:
         users.insert_one({'_id': username, 
                         'email': email,
                         'password': password_hash,
-                        'browser_fingerprint': browser_fingerprint
+                        'browser_fingerprint': browser_fingerprint,
+                        'current_room': current_room
                         })
     except DuplicateKeyError:
         print(f"Error: user with username '{username}' already exists")
@@ -34,6 +35,16 @@ def write_invite(username, invite_id):
                         })
     except DuplicateKeyError:
         print(f"Error: user with username '{username}' already exists")
+
+'''def get_room(username):
+    user = users.find_one({'_id': username})
+    #user_object = User(user)if user is not None else None
+    room = user['current_room']
+    return room'''
+
+def set_room(username, room):
+    # Update the current_room field for the user
+    users.update_one({'_id': username}, {'$set': {'current_room': room}})
 
 def get_user(username):
     user = users.find_one({'_id': username})

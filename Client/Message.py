@@ -1,3 +1,4 @@
+import re
 import time
 
 from EncryptionService import rsa_encrypt, rsa_decrypt
@@ -5,6 +6,29 @@ from EncryptionService import rsa_encrypt, rsa_decrypt
 plaintext_size = 180
 ciphertext_size = 256
 split_char = b'\x00'
+
+
+def cleanse_message_(message):
+    sql_pattern = re.compile(r'(\'|").*?(select|or).*?(\'|")', re.IGNORECASE | re.DOTALL)
+
+    xss_found = False
+
+    sql_found = bool(sql_pattern.search(message))
+
+    # Cleanse message
+    while "<script>" in message or "</script>" in message:
+        message = message.replace("<script>", "")
+        message = message.replace("</script>", "")
+        xss_found = True
+
+    message = sql_pattern.sub("", message)
+
+    if xss_found:
+        message += f"\nThis message has been flagged as a potential XSS attack and subsequently cleansed."
+    if sql_found:
+        message += f"\nThis messages has been flagged as a potential SQL injection and subsequently cleansed."
+
+    return message
 
 
 def form_message_blocks(message, packet_size, target_public_key, server_public_key):

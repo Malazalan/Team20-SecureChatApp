@@ -8,6 +8,7 @@ class User:
         self.email = user_data['email']
         self.password = user_data['password']
         self.browser_fingerprint = user_data['browser_fingerprint']
+        self.current_room = user_data['current_room']
 
     def is_authenticated(self):
         return True
@@ -20,6 +21,9 @@ class User:
     
     def get_id(self):
         return self.username
+    
+    def get_current_room(self):
+        return self.current_room
     
     def validate_fingerprint(self, fingerprint):
         print(f"{fingerprint} == {self.browser_fingerprint}")
