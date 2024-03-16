@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Group Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: #fff;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 50px;
+            margin-bottom: 30px;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        div {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Group Chat</h1>
+        <h1>Logged in user: {{ current_user.username }}</h1>
+        <div id="messages">
+            <b>Contents of chat:</b>
+            <br>
+            <b>----------------------------------------------</b>
+        </div>
+
+        <b>----------------------------------------------</b>
+
+        <br>
+
+        <!-- 修改表单，添加群组聊天功能 -->
+        <form id="send_message_form">
+            <input type="text" id="message_input" placeholder="Message:">
+            <!-- 添加选择群组的下拉菜单 -->
+            <select id="group_select">
+                <option value="group1">Group 1</option>
+                <option value="group2">Group 2</option>
+                <!-- 添加更多群组选项 -->
+            </select>
+             <label class="custom-file-input">
+    Upload File
+    <input type="file" id="file_input" style="display:none;">
+</label>
+
+            <button type="submit">Send</button>
+        </form>
+        <form action="/home">
+            <button type="submit">Home</button>
+        </form>
+        <br>
+
+        <form id="clear_messages_form">
+            <button type="submit" id="clear_messages_btn">Clear Chat History</button>
+            <input type="checkbox" id="save_chat_checkbox" checked>
+            <label for="save_chat_checkbox">Save received messages locally</label>
+        </form>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <script>
+        window.onload = function () {
+            const socket = io.connect("http://127.0.0.1:5000");
+            const message_input = document.getElementById('message_input');
+            const file_input = document.getElementById('file_input');
+            const save_chat_checkbox = document.getElementById('save_chat_checkbox');
+            const clear_messages_btn = document.getElementById('clear_messages_btn');
+
+            // 处理群组消息的发送
+            document.getElementById('send_message_form').onsubmit = function (e) {
+                e.preventDefault();
+                let message = message_input.value;
+                let file = file_input.files[0]; // 获取选择的文件
+                let selectedGroup = document.getElementById('group_select').value; // 获取选择的群组
+                if (message.length || file) {
+                    socket.emit('group_message_sent', {
+                        username: "{{current_user.username}}",
+                        group: selectedGroup, // 将选定的群组传递给服务器
+                        message: message,
+                        file: file ? { // 将文件与消息一起发送
+                            name: file.name,
+                            url: URL.createObjectURL(file)
+                        } : null,
+                        saveLocally: save_chat_checkbox.checked // 包括是否在消息中保存到本地
+                    });
+                    message_input.value = '';
+                    file_input.value = ''; // 重置文件输入
+                }
+            };
+
+            // 处理接收到的群组消息
+            socket.on('recieve_group_message', function (data) {
+                appendMessage(data);
+                if (save_chat_checkbox.checked) {
+                    saveMessageToLocalStorage(data);
+                }
+            });
+
+            // 在页面加载时显示已保存的消息
+            displaySavedMessages();
+
+            // 显示已保存的消息
+            function displaySavedMessages() {
+                const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+                savedMessages.forEach(message => {
+                    appendMessage(message);
+                });
+            }
+
+            // 添加消息到聊天内容区域
+            function appendMessage(data) {
+                const newNode = document.createElement('div');
+                if (data.file) {
+                    newNode.innerHTML = `<b>${data.username}:&nbsp;</b> File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
+                } else {
+                    newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+                }
+                document.getElementById('messages').appendChild(newNode);
+            }
+
+            // 将消息保存到本地存储
+            function saveMessageToLocalStorage(message) {
+                let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+                savedMessages.push(message);
+                localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+            }
+
+            // 清除聊天记录按钮点击事件
+            clear_messages_btn.addEventListener('click', function () {
+                localStorage.removeItem('chatMessages');
+                document.getElementById('messages').innerHTML = '';
+            });
+        };
+    </script>
+</body>
+</html>

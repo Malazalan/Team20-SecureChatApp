@@ -185,10 +185,22 @@
 
         <button type="submit" id="sendButton" disabled>Send</button>
     </form>
-
     <div class="button-container">
         <button id="clearChatHistoryButton" onclick="clearChatHistory()">Clear Chat History</button>
         <button id="homeButton" onclick="navigateHome()">Home</button>
+        <br>
+
+        <form id="clear_messages_form">
+            <button type="submit">Clear Chat History</button>
+        </form>
+
+        <form action="/home">
+            <button type="submit">Home</button>
+        </form>
+
+        <!-- Checkbox to enable/disable saving chat messages locally -->
+        <input type="checkbox" id="save_chat_checkbox"checked>
+        <label for="save_chat_checkbox">Save received messages locally</label>
     </div>
 </div>
 
@@ -197,9 +209,7 @@
         window.onload = function() {
             const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
             savedMessages.forEach(message => {
-                if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
-                    appendMessage(message);
-                }
+                appendMessage(message);
             });
 
             const consentCheckbox = document.getElementById('consentCheckbox');
@@ -234,6 +244,7 @@
 
         let message_input = document.getElementById('message_input');
         let file_input = document.getElementById('file_input');
+        let save_chat_checkbox = document.getElementById('save_chat_checkbox');
 
         document.getElementById('send_message_form').onsubmit = function(e) {
             e.preventDefault();
@@ -253,7 +264,8 @@
                     file: file ? { // Send file along with the message
                         name: file.name,
                         url: URL.createObjectURL(file)
-                    } : null
+                    } : null,
+                    saveLocally: save_chat_checkbox.checked // Include whether to save locally in the message
                 });
 
                 message_input.value = '';
@@ -268,16 +280,18 @@
 
         socket.on('recieve_message', function (data) {
             appendMessage(data);
-            saveMessageToLocalStorage(data);
+            if (save_chat_checkbox.checked) {
+                saveMessageToLocalStorage(data);
+            }
         });
 
         function appendMessage(data) {
             const newNode = document.createElement('div');
             if (data.file) {
-                // 如果消息包含文件，则创建带有下载链接的节点
+                // If the message contains a file, create a node with a download link
                 newNode.innerHTML = `<b>${data.username}:&nbsp;</b> File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
             } else {
-                // 否则，正常显示消息
+                // Otherwise, display the message normally
                 newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
             }
             document.getElementById('messages').appendChild(newNode);

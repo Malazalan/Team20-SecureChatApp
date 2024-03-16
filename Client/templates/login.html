@@ -43,6 +43,11 @@
             border: 1px solid #ccc;
         }
 
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+
         button {
             background-color: #007bff;
             color: #fff;
@@ -59,18 +64,17 @@
 </head>
 <body>
     <h1>Please log in</h1>
-    <form method="POST" action="/login">
+    <form id="loginForm" method="POST" action="/login">
         <div>
             <label>Enter your username:</label>
-            <input type="text" name="username" required>
+            <input type="text" name="username" id="username" required>
         </div>
         <div>
             <label>Enter Password:</label>
-            <input type="password" name="password" required>
+            <input type="password" name="password" id="password" required>
         </div>
-        <div>
-            <input type="hidden" name="browserFingerprint" id="browserFingerprint">
-        </div>
+        <div id="loginError" class="error"></div>
+        <input type="hidden" name="browserFingerprint" id="browserFingerprint">
         <button type="submit">Submit</button>
     </form>
 
@@ -84,6 +88,30 @@
                     document.getElementById('browserFingerprint').value = visitorId;
                     console.log(visitorId);
                 });
+        });
+
+        // Function to display login error message
+        function displayError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+        }
+
+        // Keep username field filled on failed login
+        const urlParams = new URLSearchParams(window.location.search);
+        const loginFailed = urlParams.has('loginFailed');
+        if (loginFailed) {
+            displayError('Incorrect username or password. Please try again.');
+            const usernameField = document.getElementById('username');
+            const storedUsername = sessionStorage.getItem('loginUsername');
+            if (storedUsername) {
+                usernameField.value = storedUsername;
+            }
+        }
+
+        // Store username in session storage
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            const usernameField = document.getElementById('username');
+            sessionStorage.setItem('loginUsername', usernameField.value);
         });
     </script>
 </body>
