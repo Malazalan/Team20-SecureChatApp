@@ -81,9 +81,9 @@ def server_listen_handler(private_key):
             print(f"{Message_Type.FILE.value} - {Message_Type.FILE.value == 2}")
 
             if message_header.type == Message_Type.TEXT.value:
-                print(type(private_key))
-                print(type(message))
-                print(type(message_header.type))
+                #print(type(private_key))
+                #print(type(message))
+                #print(type(message_header.type))
                 temp = decrypt_wrapper(private_key, message, message_header.type)
                 split_message = decrypt_wrapper(private_key, message, message_header.type).decode('utf-8').split(chr(30))
                 # TODO actually get the right public key
@@ -102,13 +102,11 @@ def server_listen_handler(private_key):
                 split_message = remaining_data.decode('utf-8').split(chr(30))
 
                 bytes_signature = ast.literal_eval(split_message[0])
-                print(bytes_signature)
-                for thing in split_message:
-                    print(thing)
+                #print(bytes_signature)
+                #for thing in split_message:
+                    #print(thing)
                 with open(f"{verify_signature(get_public_key(), file_data, bytes_signature).replace(' ', '-')}_{split_message[2]}_{split_message[3]}", "wb") as file:
                     file.write(file_data)
-
-                time.sleep(20)
             else:
                 print("This should not be possible")
         else:
