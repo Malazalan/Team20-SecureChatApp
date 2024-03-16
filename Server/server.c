@@ -194,21 +194,21 @@ int main(int argc, char * argv[]) {
 
     // Alan
     struct Client * Alan = malloc(sizeof(struct Client));
-    Alan->username = malloc(strlen("Alan"));
-    strncpy(Alan->username, "Alan", 5);
-    Alan->usernameSize = strlen("Alan") + 1;
+    Alan->username = malloc(strlen("Alice"));
+    strncpy(Alan->username, "Alice", 5);
+    Alan->usernameSize = strlen("Alice") + 1;
     Alan->IP = malloc(strlen("127.0.0.1"));
     strncpy(Alan->IP, "127.0.0.1", strlen("127.0.0.1") + 1);
     Alan->IPSize = strlen("127.0.0.1") + 1;
 
     // Joe
     struct Client * Joe = malloc(sizeof(struct Client));
-    Joe->username = malloc(strlen("Joe"));
-    strncpy(Joe->username, "Joe", 4);
-    Joe->usernameSize = strlen("Joe") + 1;
-    Joe->IP = malloc(strlen("192.168.212.198")); //TODO change to his public IP
-    strncpy(Joe->IP, "192.168.212.198", strlen("192.168.212.198") + 10);
-    Joe->IPSize = strlen("192.168.212.198") + 1;
+    Joe->username = malloc(strlen("Bob"));
+    strncpy(Joe->username, "Bob", 4);
+    Joe->usernameSize = strlen("Bob") + 1;
+    Joe->IP = malloc(strlen("127.0.0.1")); //TODO change to his public IP
+    strncpy(Joe->IP, "127.0.0.1", strlen("127.0.0.1") + 10);
+    Joe->IPSize = strlen("127.0.0.1") + 1;
 
     allClients[0] = Alan;
     allClients[1] = Joe;
