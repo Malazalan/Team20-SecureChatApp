@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #667eea, #764ba2);
+        }
+
+        .container {
+            max-width: 600px;git
+            margin: 20px auto;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h3 {
+            color: #333;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            margin: 10px 0;
+            padding: 5px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+
+        button.clear {
+            background-color: #dc3545;
+        }
+
+        button.logout {
+            background-color: #6c757d;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome <span id="currentUser">{{ current_user.username }}</span></h1>
+        <div class="contacts">
+            <h3>Contacts:</h3>
+            <ul id="contactsList">
+                <!-- Contacts will be populated here by the server -->
+                {% for user_id in user_ids %}
+                <li>
+                    <a href="/chat/{{user_id}}">{{user_id}}</a>
+                    <button onclick="addToFavourites('{{user_id}}')">Add to Favourites</button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <h3>Favourite Contacts:</h3>
+        <ul id="favouritesList"></ul>
+        <button onclick="clearContacts()" class="clear">Clear Contact List</button>
+        <form action="/logout">
+            <button type="submit" class="logout">Log Out</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            updateFavouritesList();
+
+            // Assuming 'user_ids' to be dynamically generated, replace with actual dynamic code if necessary
+            const user_ids = ['user1', 'user2', 'user3']; // Placeholder user IDs
+            const contactsList = document.getElementById('contactsList');
+            user_ids.forEach(userId => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="/chat/${userId}">${userId}</a> <button onclick="addToFavourites('${userId}')">Add to Favourites</button>`;
+                contactsList.appendChild(li);
+            });
+        });
+
+        function addToFavourites(userId) {
+            let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
+            if (!favourites.includes(userId)) {
+                favourites.push(userId);
+                localStorage.setItem('favourites', JSON.stringify(favourites));
+                updateFavouritesList();
+            }
+        }
+
+        function removeFromFavourites(userId) {
+            let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
+            const index = favourites.indexOf(userId);
+            if (index > -1) {
+                favourites.splice(index, 1);
+                localStorage.setItem('favourites', JSON.stringify(favourites));
+                updateFavouritesList();
+            }
+        }
+
+        function updateFavouritesList() {
+            let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
+            const listElement = document.getElementById('favouritesList');
+            listElement.innerHTML = '';
+            favourites.forEach(userId => {
+                const li = document.createElement('li');
+                li.textContent = userId;
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.addEventListener('click', () => removeFromFavourites(userId));
+                li.appendChild(removeButton);
+                listElement.appendChild(li);
+            });
+        }
+
+        function clearContacts() {
+            localStorage.setItem('favourites', JSON.stringify([]));
+            updateFavouritesList();
+        }
+    </script>
+</body>
+</html>
