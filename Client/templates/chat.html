@@ -119,8 +119,33 @@
         .button-container {
             display: flex;
             justify-content: space-between;
+            align-items: center; /* Align items vertically */
+            flex-wrap: wrap; /* Allows buttons to wrap onto the next line if space is limited */
+            gap: 10px; /* Adds a gap between the buttons */
+            margin-top: 10px; /* Space above the button container */
+        }
+        /* Style for Save chat checkbox container */
+        .save-chat-container {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the checkbox and label */
+            gap: 5px; /* Space between the checkbox and label */
+            margin-top: 20px; /* Space above the checkbox container */
+        }
+        /* Additional styling for checkbox and label for consistency */
+        #save_chat_checkbox {
+            cursor: pointer;
         }
 
+        .save-chat-container label {
+            cursor: pointer;
+        }
+
+        /* Ensure button and checkbox sizes are consistent */
+        button, input[type="checkbox"] {
+            min-width: 120px; /* Ensures a minimum width for buttons */
+            padding: 10px 20px; /* Consistent padding for buttons */
+        }
         .consent-container {
             display: flex;
             align-items: center;
@@ -186,17 +211,9 @@
         <button type="submit" id="sendButton" disabled>Send</button>
     </form>
     <div class="button-container">
-        <button id="clearChatHistoryButton" onclick="clearChatHistory()">Clear Chat History</button>
-        <button id="homeButton" onclick="navigateHome()">Home</button>
-        <br>
-
-        <form id="clear_messages_form">
-            <button type="submit">Clear Chat History</button>
-        </form>
-
-        <form action="/home">
-            <button type="submit">Home</button>
-        </form>
+        <button id="clearChatHistoryButton" type="button" onclick="clearChatHistory()">Clear Chat History</button>
+        <button id="homeButton" type="button" onclick="navigateHome()">Home</button>
+        <div>
 
         <!-- Checkbox to enable/disable saving chat messages locally -->
         <input type="checkbox" id="save_chat_checkbox"checked>
@@ -306,6 +323,18 @@
         function clearChatHistory() {
             localStorage.removeItem('chatMessages');
             document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>---------------------------------------------</b>';
+        }
+
+        function clearChatHistory() {
+            // Logic to clear chat history
+            localStorage.removeItem('chatMessages');
+            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
+            // Add any additional logic if needed
+        }
+
+        function navigateHome() {
+            // Logic to navigate to home
+            window.location.href = '/home'; // Replace with your home route
         }
     </script>
 </body>
