@@ -26,6 +26,13 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 
+@app.route("/terms")
+def terms():
+    return render_template("TermsofServies.html")
+
+@app.route("/privacy")
+def privacy():
+    return render_template("PrivacyPolicy.html")
 @app.route('/')
 def login_page():
     if current_user.is_authenticated:
@@ -119,5 +126,5 @@ def handle_message_sent(data):
     socketio.emit('recieve_message', data, room=request.sid)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True,allow_unsafe_werkzeug=True)
 

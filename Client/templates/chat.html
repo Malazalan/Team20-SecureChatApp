@@ -3,112 +3,194 @@
 <head>
     <title>Chat</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+        body {
+            font-family: Arial, sans-serif;
             background: linear-gradient(to right, #667eea, #764ba2);
             color: #fff;
+            text-align: center;
+            padding: 50px 0; /* Add padding to the top and bottom of the page */
         }
 
         .container {
             max-width: 800px;
             margin: 50px auto;
-            padding: 20px;
+            padding: 40px;
             background-color: rgba(255, 255, 255, 0.9);
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
         }
 
         h1, h2 {
-            color: #333;
-            text-align: center;
+            margin-bottom: 20px; /* Add margin to headings */
         }
 
         #messages {
             margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
         }
 
-        #messages div {
+        form {
+            width: calc(100% - 40px); /* Account for padding */
+            margin: 20px auto;
+        }
+
+        input[type="text"],
+        input[type="checkbox"] {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .custom-file-input {
+            position: relative;
+            display: inline-block;
+            width: 100%;
             margin-bottom: 10px;
         }
 
-        button {
+        .custom-file-input::before {
+            content: 'Select file';
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
             background-color: #007bff;
             color: #fff;
-            border: none;
-            padding: 10px 20px;
+            text-align: center;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+
+        .custom-file-input:hover::before {
+            background-color: #0056b3;
+        }
+
+        .custom-file-input input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
             cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin-bottom: 10px;
             border-radius: 4px;
-            margin-right: 10px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
 
         button:hover {
             background-color: #0056b3;
         }
 
-        /* Styling for file upload */
-        .custom-file-input {
-            color: transparent;
+        button:disabled,
+        button:disabled:hover {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
 
-        .custom-file-input::-webkit-file-upload-button {
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .consent-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .consent-container label {
+            margin-left: 5px;
+        }
+        .custom-file-input .tooltip-text {
             visibility: hidden;
-        }
-
-        .custom-file-input::before {
-            content: 'Select file';
+            width: 220px;
+            background-color: black;
             color: #fff;
-            display: inline-block;
-            background: #007bff;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 4px;
-            cursor: pointer;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
         }
 
-        .custom-file-input:hover::before {
-            background: #0056b3;
+        .custom-file-input:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
         }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Logged in user: {{ current_user.username }}</h1>
-        <h2>Chatting with {{ target_user_id }}</h2>
+<div class="container">
+    <h1>Logged in user: {{ current_user.username }}</h1>
+    <h2>Chatting with {{ target_user_id }}</h2>
 
-        <div id="messages">
-            <b>Contents of chat:</b>
-            <br>
-            <b>----------------------------------------------</b>
+    <div id="messages">
+        <b>Contents of chat:</b>
+        <br>
+        <b>----------------------------------------------</b>
+    </div>
+
+    <!-- File upload form -->
+    <form id="send_message_form">
+        <input type="text" id="message_input" placeholder="Type your message here...">
+
+        <div class="consent-container">
+            <input type="checkbox" id="consentCheckbox">
+            <label for="consentCheckbox">I have read and agree to the
+                <a href="{{ url_for('terms') }}" target="_blank">Terms of Service</a> and
+                <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.
+            </label>
         </div>
 
-        <b>----------------------------------------------</b>
 
-        <br>
+        <div class="custom-file-input" id="fileInputLabel">
+            <input type="file" id="file_input" style="display:none;" disabled>
+            <span class="tooltip-text">Maximum allowed upload file size is 100MB</span>
+        </div>
 
-        <!-- File upload form -->
-        <form id="send_message_form">
-            <input type="text" id="message_input" placeholder="Message:">
-            <!-- File upload input -->
-            <label class="custom-file-input">
-                <input type="file" id="file_input" style="display:none;">
-            </label>
-            <!-- Send button -->
-            <button type="submit">Send</button>
-        </form>
+        <button type="submit" id="sendButton" disabled>Send</button>
+    </form>
 
-        <br>
-
-        <form id="clear_messages_form">
-            <button type="submit">Clear Chat History</button>
-        </form>
-
-        <form action="/home">
-            <button type="submit">Home</button>
-        </form>
+    <div class="button-container">
+        <button id="clearChatHistoryButton" onclick="clearChatHistory()">Clear Chat History</button>
+        <button id="homeButton" onclick="navigateHome()">Home</button>
     </div>
+</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
     <script>
@@ -119,7 +201,28 @@
                     appendMessage(message);
                 }
             });
+
+            const consentCheckbox = document.getElementById('consentCheckbox');
+            const sendButton = document.getElementById('sendButton');
+            const fileInput = document.getElementById('file_input');
+            const fileInputLabel = document.getElementById('fileInputLabel');
+
+            const isConsented = localStorage.getItem('userConsented') === 'true';
+            consentCheckbox.checked = isConsented;
+            sendButton.disabled = !isConsented;
+            fileInput.disabled = !isConsented;
+            fileInputLabel.style.pointerEvents = isConsented ? 'auto' : 'none';
+            fileInputLabel.style.opacity = isConsented ? '1' : '0.5';
+
+            consentCheckbox.addEventListener('change', function() {
+                sendButton.disabled = !this.checked;
+                fileInput.disabled = !this.checked;
+                fileInputLabel.style.pointerEvents = this.checked ? 'auto' : 'none';
+                fileInputLabel.style.opacity = this.checked ? '1' : '0.5';
+                localStorage.setItem('userConsented', this.checked);
+            });
         };
+
 
         const socket = io.connect("http://127.0.0.1:5000");
         socket.on('connect', function(){
@@ -132,8 +235,14 @@
         let message_input = document.getElementById('message_input');
         let file_input = document.getElementById('file_input');
 
-        document.getElementById('send_message_form').onsubmit = function (e) {
+        document.getElementById('send_message_form').onsubmit = function(e) {
             e.preventDefault();
+
+            const isConsented = localStorage.getItem('userConsented') === 'true';
+            if (!isConsented) {
+                alert('Please agree to the terms of service and privacy policy before sending messages.');
+                return;
+            }
             let message = message_input.value;
             let file = file_input.files[0]; // Get the selected file
             if (message.length || file) {
@@ -152,7 +261,7 @@
             }
         };
 
-        document.getElementById('clear_messages_form').onsubmit = function (e) {
+        document.getElementById('clearChatHistoryButton').onsubmit = function (e) {
             e.preventDefault();
             clearChatHistory();
         };
@@ -182,7 +291,7 @@
 
         function clearChatHistory() {
             localStorage.removeItem('chatMessages');
-            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
+            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>---------------------------------------------</b>';
         }
     </script>
 </body>
