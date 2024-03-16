@@ -158,7 +158,7 @@ class Message:
         inner_message_plaintext = (self.data + chr(30) + str(self.signature) + chr(30) + self.sender + chr(30) +
                                    str(self.time_stamp))
 
-        print(f"\nInner plaintext - {inner_message_plaintext}")
+        #print(f"\nInner plaintext - {inner_message_plaintext}")
 
         return inner_message_plaintext
 

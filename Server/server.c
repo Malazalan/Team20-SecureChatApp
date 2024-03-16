@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <stdarg.h>
 
 #define PORT 54321
 #define CLIENT_PORT 12345
@@ -14,13 +15,132 @@
 #define MAX_PACKET_LENGTH 256
 #define HEADER_LENGTH 16
 #define MAX_CLIENTS 10
+#define DEBUG_THRESHOLD INFO
 
 // Header types
 #define metadata 0
 #define text 1
 #define file 2
 
-pthread_mutex_t lock;
+// Define ANSI escape codes for colors
+#define ANSI_RESET   "\033[0m"
+#define ANSI_RED     "\x1B[31m"
+#define ANSI_GREEN   "\x1B[32m"
+#define ANSI_YELLOW  "\x1B[33m"
+#define ANSI_BLUE    "\x1B[34m"
+#define ANSI_MAGENTA "\x1B[35m"
+#define ANSI_CYAN    "\x1B[36m"
+
+pthread_mutex_t actionLogLock;
+pthread_mutex_t debugLogLock;
+
+enum logLevel {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ALERT,
+    CRITICAL,
+    FATAL
+};
+
+void colourLogLevel(enum logLevel level, char* buffer, int bufSize) {
+    switch (level) {
+        case TRACE:
+            snprintf(buffer, bufSize, "%sTRACE%s", ANSI_CYAN, ANSI_RESET);
+            break;
+        case DEBUG:
+            snprintf(buffer, bufSize, "%sDEBUG%s", ANSI_BLUE, ANSI_RESET);
+            break;
+        case INFO:
+            snprintf(buffer, bufSize, "%sINFO%s", ANSI_GREEN, ANSI_RESET);
+            break;
+        case WARN:
+            snprintf(buffer, bufSize, "%sWARN%s", ANSI_YELLOW, ANSI_RESET);
+            break;
+        case ALERT:
+            snprintf(buffer, bufSize, "%sALERT%s", ANSI_MAGENTA, ANSI_RESET);
+            break;
+        case CRITICAL:
+            snprintf(buffer, bufSize, "%sCRITICAL%s", ANSI_RED, ANSI_RESET);
+            break;
+        case FATAL:
+            snprintf(buffer, bufSize, "%sFATAL%s", ANSI_RED, ANSI_RESET);
+            break;
+    }
+}
+
+int logDebug(enum logLevel level, const char* format, ...) {
+    if (level < DEBUG_THRESHOLD) {
+        return 0;
+    }
+    time_t current_time;
+    time(&current_time);
+
+    char timeBuffer[80];
+    memset(timeBuffer, '\0', 80);
+    struct tm * timeInfo;
+    timeInfo = localtime(&current_time);
+    strftime(timeBuffer, 80, "%Y-%m-%d %H:%M:%S", timeInfo);
+
+    pthread_mutex_lock(&debugLogLock);
+    FILE* debugLogFile = fopen("debug.log", "a");
+    if (!debugLogFile) {
+        pthread_mutex_unlock(&debugLogLock);
+        printf("Failed to open debug.log\n");
+        return 1;
+    }
+
+    char levelBuffer[20];
+    colourLogLevel(level, levelBuffer, 19);
+
+    fprintf(debugLogFile, "%s | %s - ", timeBuffer, levelBuffer);
+    va_list args;
+    va_start(args, format);
+    vfprintf(debugLogFile, format, args);
+    va_end(args);
+    fprintf(debugLogFile, "\n");
+
+    fclose(debugLogFile);
+    pthread_mutex_unlock(&debugLogLock);
+    return 0;
+}
+
+int logAction(enum logLevel level, char* subject, char* format, ...) {
+    if (level < DEBUG_THRESHOLD) {
+        return 0;
+    }
+    time_t current_time;
+    time(&current_time);
+
+    char timeBuffer[80];
+    memset(timeBuffer, '\0', 80);
+    struct tm * timeInfo;
+    timeInfo = localtime(&current_time);
+    strftime(timeBuffer, 80, "%Y-%m-%d %H:%M:%S", timeInfo);
+
+    pthread_mutex_lock(&actionLogLock);
+    FILE* actionLogFile = fopen("action.log", "a");
+    if (!actionLogFile) {
+        pthread_mutex_unlock(&actionLogLock);
+        printf("Failed to open action.log\n");
+        return 1 + logDebug(CRITICAL, "Failed to open action.log");;
+    }
+
+    char levelBuffer[20];
+    colourLogLevel(level, levelBuffer, 19);
+
+    fprintf(actionLogFile, "%s | %s - %s : ", timeBuffer, levelBuffer, subject);
+    va_list args;
+    va_start(args, format);
+    vfprintf(actionLogFile, format, args);
+    va_end(args);
+    fprintf(actionLogFile, "\n");
+
+    fclose(actionLogFile);
+    pthread_mutex_unlock(&actionLogLock);
+    return 0;
+};
 
 struct Client {
     char* username;
@@ -46,10 +166,10 @@ void secureFreeClient (struct Client * client) {
     }
 }
 
-void secureFreeString (char * string) {
-    if (string) {
-        memset(string, 0, strlen(string));
-        free(string);
+void secureFree (void * buffer, size_t length) {
+    if (buffer) {  // Get the length of the string
+        memset(buffer, 0, length);       // Clear the content of the string
+        free(buffer);                    // Free the memory
     }
 }
 
@@ -66,9 +186,9 @@ void convertHeaderToBytes(struct Header header, unsigned char* headerBytes) {
         header.numberOfPackets >>= 8; // Shift right by 8 bits to get the next byte
     }
     for (int i = 0; i < HEADER_LENGTH; i++) {
-        printf("%02X ", headerBytes[i]);
+        //printf("%02X ", headerBytes[i]);
     }
-    printf("-> ");
+    //printf("-> ");
 }
 
 void handleWrite(char* address, struct Header * messageHeader, struct Header * metadataHeader,
@@ -78,43 +198,45 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        printf("Failed to create write socket");
+        logDebug(FATAL, "Failed to create write socket");
         pthread_exit(NULL);
     }
 
     clientAddr.sin_family = AF_INET;
-    printf("Contacting %s\n", address);
+    logDebug(WARN, "Contacting %s", address);
     clientAddr.sin_addr.s_addr = inet_addr(address);
     clientAddr.sin_port = htons(CLIENT_PORT);
 
     if (connect(sockfd, (struct sockaddr*)&clientAddr, sizeof(clientAddr)) != 0) {
-        printf("Failed to connect to client listener");
+        logDebug(FATAL, "Failed to connect to client listener");
         pthread_exit(NULL);
     }
 
     // Send the message header
     unsigned char headerBytes[HEADER_LENGTH];
     convertHeaderToBytes(*messageHeader, headerBytes);
-    printf("Sending message header\n");
+    logDebug(TRACE, "Sending message header");
     send(sockfd, headerBytes, HEADER_LENGTH, 0);
 
     // Send the metadata header
     convertHeaderToBytes(*metadataHeader, headerBytes);
-    printf("Sending metadata header\n");
+    logDebug(TRACE, "Sending metadata header");
     send(sockfd, headerBytes, HEADER_LENGTH, 0);
 
     if (fileMetadataHeader->numberOfPackets > 0) {
         // Send file metadata header
         convertHeaderToBytes(*fileMetadataHeader, headerBytes);
-        printf("Sending file metadata header\n");
+        logDebug(TRACE, "Sending file metadata header");
         send(sockfd, headerBytes, HEADER_LENGTH, 0);
     }
 
     // Send the packets
-    printf("Sending message\n");
+    logDebug(TRACE, "Sending message to %s", address);
     //printf("Preparing %s\n", messageToSend);
     for (int packetNum = 0; packetNum < messageHeader->numberOfPackets; packetNum++) {
+        logDebug(DEBUG, "Pre malloc 236");
         unsigned char* buffer = malloc(MAX_PACKET_LENGTH);
+        logDebug(DEBUG, "Post malloc 236");
 
         if (packetNum < messageHeader->numberOfPackets - 1) {
             for (int i = 0; i < MAX_PACKET_LENGTH; i++) {
@@ -137,11 +259,14 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
             }
         }
 
-        //printf("Sent %s\n", buffer);
+        logDebug(TRACE, "Sent %d/%d", packetNum + 1, messageHeader->numberOfPackets);
         send(sockfd, buffer, MAX_PACKET_LENGTH, 0);
-        secureFreeString((char*) buffer);
+        logDebug(TRACE, "Pre secureFree 265");
+        secureFree(buffer, MAX_PACKET_LENGTH);
+        //free(buffer);
+        logDebug(TRACE, "Post secureFree 265");
     }
-    printf("Finished\n\n");
+    logDebug(INFO, "Finished");
 }
 
 struct WriteThreadArgs {
@@ -166,13 +291,15 @@ char** splitMessage(char* receivedMessage, int* tokenCount) {
     while(token != NULL) {
         tokens = realloc(tokens, sizeof(char*) * (count + 1));
         if(tokens == NULL) {
-            fprintf(stderr, "Memory allocation failed\n");
+            logDebug(FATAL,  "Memory allocation failed\n");
             exit(EXIT_FAILURE);
         }
 
+        logDebug(DEBUG, "Pre malloc 294");
         tokens[count] = malloc(strlen(token) + 1);
+        logDebug(DEBUG, "Post malloc 294");
         if(tokens[count] == NULL) {
-            fprintf(stderr, "Memory allocation failed for token\n");
+            logDebug(FATAL, "Memory allocation failed for token\n");
             exit(EXIT_FAILURE);
         }
 
@@ -194,20 +321,29 @@ int main(int argc, char * argv[]) {
 
     // Alan
     struct Client * Alan = malloc(sizeof(struct Client));
-    Alan->username = malloc(strlen("Alan"));
-    strncpy(Alan->username, "Alan", 5);
-    Alan->usernameSize = strlen("Alan") + 1;
-    Alan->IP = malloc(strlen("127.0.0.1"));
+    logDebug(DEBUG, "%d", Alan);
+    Alan->username = malloc(strlen("Alice") + 1);
+    strncpy(Alan->username, "Alice", 5);
+    Alan->usernameSize = strlen("Alice") + 1;
+    logDebug(DEBUG, "Pre malloc 327");
+    Alan->IP = malloc(strlen("127.0.0.1") + 1);
+    logDebug(DEBUG, "Post malloc 327");
     strncpy(Alan->IP, "127.0.0.1", strlen("127.0.0.1") + 1);
     Alan->IPSize = strlen("127.0.0.1") + 1;
 
     // Joe
+    logDebug(DEBUG, "Pre malloc 334");
     struct Client * Joe = malloc(sizeof(struct Client));
-    Joe->username = malloc(strlen("Joe"));
-    strncpy(Joe->username, "Joe", 4);
-    Joe->usernameSize = strlen("Joe") + 1;
-    Joe->IP = malloc(strlen("127.0.0.1")); //TODO change to his public IP
-    strncpy(Joe->IP, "127.0.0.1", strlen("127.0.0.1") + 10);
+    logDebug(DEBUG, "Post malloc 334");
+    logDebug(DEBUG, "Pre malloc 337");
+    Joe->username = malloc(strlen("Bob") + 1);
+    logDebug(DEBUG, "Post malloc 337");
+    strncpy(Joe->username, "Bob", 4);
+    Joe->usernameSize = strlen("Bob") + 1;
+    logDebug(DEBUG, "Pre malloc 342");
+    Joe->IP = malloc(strlen("127.0.0.1") + 1);
+    logDebug(DEBUG, "Post malloc 342");
+    strncpy(Joe->IP, "127.0.0.1", strlen("127.0.0.1") + 1);
     Joe->IPSize = strlen("127.0.0.1") + 1;
 
     allClients[0] = Alan;
@@ -225,12 +361,14 @@ int main(int argc, char * argv[]) {
 
     // Create socket fd
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        logDebug(FATAL, "Error creating socket");
         perror("Error creating socket");
         exit(EXIT_FAILURE);
     }
 
     // Tell the server to reuse ports even if in use by other processes
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+        logDebug(FATAL, "Error setting sockopt");
         perror("Error setting sockopt");
         exit(EXIT_FAILURE);
     }
@@ -240,6 +378,7 @@ int main(int argc, char * argv[]) {
 
     // Bind to the port
     if (bind(server_fd, (struct sockaddr*) &address, sizeof(address)) < 0) {
+        logDebug(FATAL, "Error binding server");
         perror("Error binding server");
         exit(EXIT_FAILURE);
     }
@@ -247,42 +386,46 @@ int main(int argc, char * argv[]) {
     for (;;) {
         // Wait for a connection
         if (listen(server_fd, MAX_CONN) < 0) {
-            perror("Error listening");
+            logDebug(FATAL, "Error listening");
             exit(EXIT_FAILURE);
         }
 
-        printf("Ready to receive\n");
+        logDebug(INFO, "Ready to receive");
         if ((new_client = accept(server_fd, (struct sockaddr*) &address, &addrlen)) < 0) {
-            perror("Error accepting new client connection");
+            logDebug(FATAL, "Error accepting new client connection");
             exit(EXIT_FAILURE);
         }
 
         // Receive message header
-        printf("Receive message header\n");
+        logDebug(TRACE, "Receive message header");
         unsigned char num_message_packets[HEADER_LENGTH];  // Assuming the length is represented using MAX_PACKET_LENGTH bytes
         if (recv(new_client, num_message_packets, HEADER_LENGTH, 0) < 0) {
-            perror("Error receiving number of packets");
-            exit(EXIT_FAILURE);
+            logDebug(ALERT, "Error receiving number of message packets");
+            //exit(EXIT_FAILURE);
+            close(new_client);
+            continue;
         }
         unsigned char messageType = num_message_packets[0];
 
         // Convert the bytes to an integer - ignoring the first byte
-        printf("Convert message header\n");
+        logDebug(TRACE, "Convert message header");
         int int_message_packets = 0;
         for (int i = 1; i < HEADER_LENGTH; i++) {
             int_message_packets |= (num_message_packets[i] & 0xFF) << ((i-1) * 8);
         }
 
         // Receive metadata header
-        printf("Receive metadata header\n");
+        logDebug(TRACE, "Receive metadata header");
         unsigned char num_metadata_packets[HEADER_LENGTH];  // Assuming the length is represented using MAX_PACKET_LENGTH bytes
         if (recv(new_client, num_metadata_packets, HEADER_LENGTH, 0) < 0) {
-            perror("Error receiving number of packets");
-            exit(EXIT_FAILURE);
+            logDebug(ALERT, "Error receiving number of metadata packets");
+            //exit(EXIT_FAILURE);
+            close(new_client);
+            continue;
         }
 
         // Convert the bytes to an integer - ignoring the first byte
-        printf("Convert metadata header\n");
+        logDebug(TRACE, "Convert metadata header");
         int int_metadata_packets = 0;
         for (int i = 1; i < HEADER_LENGTH; i++) {
             int_metadata_packets |= (num_metadata_packets[i] & 0xFF) << ((i-1) * 8);
@@ -291,26 +434,34 @@ int main(int argc, char * argv[]) {
         unsigned char num_file_metadata_packets[HEADER_LENGTH];
         int int_file_metadata_packets = 0;
         if (messageType == file) {
-            printf("Receive file metadata header\n");
+            logDebug(TRACE, "Receive file metadata header\n");
             if (recv(new_client, num_file_metadata_packets, HEADER_LENGTH, 0) < 0) {
-                perror("Error receiving number of packets");
-                exit(EXIT_FAILURE);
+                logDebug(ALERT, "Error receiving number of file size");
+                //exit(EXIT_FAILURE);
+                close(new_client);
+                continue;
             }
             for (int i = 1; i < HEADER_LENGTH; i++) {
                 int_file_metadata_packets |= (num_file_metadata_packets[i] & 0xFF) << ((i-1) * 8);
             }
-            printf("The file is %d bytes long\n", int_file_metadata_packets);
+            logDebug(DEBUG, "The file is %d bytes long\n", int_file_metadata_packets);
         }
 
-        printf("Expecting %d message packets\nExpecting %d metadata packets\n", int_message_packets, int_metadata_packets);
+        logDebug(DEBUG, "Expecting %d message packets", int_message_packets);
+        logDebug(DEBUG, "Expecting %d metadata packets", int_metadata_packets);
 
+        logDebug(DEBUG, "Pre malloc 443");
         unsigned char* receivedMessage = malloc(int_message_packets * MAX_PACKET_LENGTH);
+        logDebug(DEBUG, "Post malloc 443");
         int nextChar = 0;
         //printf("Saved message\n");
         for (int message_id = 0; message_id < int_message_packets; message_id++) {
             if (recv(new_client, buffer, MAX_PACKET_LENGTH, 0) < 0) {
+                logDebug(CRITICAL, "Error receiving file size");
                 perror("Error receiving message contents");
-                exit(EXIT_FAILURE);
+                //exit(EXIT_FAILURE);
+                close(new_client);
+                continue;
             }
             for (int charNum = 0; charNum < MAX_PACKET_LENGTH; charNum++) {
                 receivedMessage[nextChar] = buffer[charNum];
@@ -320,12 +471,16 @@ int main(int argc, char * argv[]) {
             //printf("%s", buffer);
         }
         //printf("\nSaved message\n%d\n", receivedMessage);
+        logDebug(DEBUG, "Pre malloc 461");
         char* receivedMetadata = malloc(int_metadata_packets * MAX_PACKET_LENGTH);
+        logDebug(DEBUG, "Pre malloc 462");
         nextChar = 0;
         for (int message_id = 0; message_id < int_metadata_packets; message_id++) {
             if (recv(new_client, buffer, MAX_PACKET_LENGTH, 0) < 0) {
-                perror("Error receiving message contents");
-                exit(EXIT_FAILURE);
+                logDebug(FATAL, "Error receiving message contents");
+                //exit(EXIT_FAILURE);
+                close(new_client);
+                continue;
             }
             for (int charNum = 0; charNum < MAX_PACKET_LENGTH; charNum++) {
                 receivedMetadata[nextChar] = buffer[charNum];
@@ -341,9 +496,10 @@ int main(int argc, char * argv[]) {
 
         //printf("Encrypted message - %s\n", tokens[0]);
         //printf("Ciphertext sign - %s\n", tokens[1]);
-        printf("Sender - %s\n", tokens[0]);
-        printf("Target - %s\n", tokens[1]);
-        printf("Timestamp - %s\n", tokens[2]);
+        logDebug(TRACE, "Sender - %s", tokens[0]);
+        logDebug(TRACE, "Target - %s", tokens[1]);
+        logDebug(TRACE, "Timestamp - %s", tokens[2]);
+        logAction(INFO, tokens[0], "Send type %d", messageType);
 
         struct Header messageHeader;
         messageHeader.numberOfPackets = int_message_packets;
@@ -357,7 +513,7 @@ int main(int argc, char * argv[]) {
         fileMetadataHeader.numberOfPackets = int_file_metadata_packets;
         metadataHeader.messageType = 0;
 
-        printf("\n\n");
+        //printf("\n\n");
 
         int metadataLen = 0;
         for(int i = 0; i < tokenCount; i++) {
@@ -382,14 +538,17 @@ int main(int argc, char * argv[]) {
         for (int i = 0; i < MAX_CLIENTS; i++) {
             // Find the IP address of the target
             if (allClients[i] != NULL) {
-                printf("Checking %s with %s\n", tokens[1], allClients[i]->username);
+                logDebug(TRACE, "Checking %s with %s", tokens[1], allClients[i]->username);
                 if (strcmp(tokens[1], allClients[i]->username) == 0) {
-                    printf("Metadata -> %s\n", metadataToSend);
+                    logDebug(TRACE, "Metadata -> %s", metadataToSend);
 
                     handleWrite(allClients[i]->IP, &messageHeader, &metadataHeader, &fileMetadataHeader,
                                receivedMessage, (unsigned char*)metadataToSend);
                     break;
                 }
+            } else {
+                logAction(WARN, tokens[0], "Cannot find %s", tokens[1]);
+                break;
             }
         }
 
@@ -409,7 +568,7 @@ int main(int argc, char * argv[]) {
         }*/
 
         for(int i = 0; i < tokenCount; i++) {
-            secureFreeString(tokens[i]);
+            secureFree(tokens[i], strlen(tokens[i]));
         }
         free(tokens);
     }
