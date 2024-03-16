@@ -48,6 +48,8 @@ if __name__ == "__main__":
 
     _, sender, target, server_ip = sys.argv  # Unpack the arguments
 
+    test_multiple_server_ips = ["1.2.3.4", "5.6.7.8", server_ip]
+
     listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(),))
     listen_thread.start()
 
@@ -60,7 +62,7 @@ if __name__ == "__main__":
     num_messages = len(messages)
     redraw_UI()
 
-    tempThread = threading.Thread(target=prepare_message, args=(target, sender, "TestImg.jpg", get_public_key(), get_server_public_key(), Message_Type.FILE, server_ip))
+    tempThread = threading.Thread(target=prepare_message, args=(target, sender, "TestImg.jpg", get_public_key(), get_server_public_key(), Message_Type.FILE, test_multiple_server_ips))
     tempThread.start()
     tempThread.join()
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
             user_input = input_queue.get_nowait()
             writeThread = threading.Thread(target=prepare_message,
                                            args=(target, sender, user_input, get_public_key(), get_server_public_key(),
-                                                 Message_Type.TEXT, server_ip))
+                                                 Message_Type.TEXT, test_multiple_server_ips))
             writeThread.start()
             messages.append([user_input, "", sender])
         except queue.Empty:
