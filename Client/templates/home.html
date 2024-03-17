@@ -28,6 +28,16 @@
             flex-direction: column;
             align-items: center;
         }
+        .contacts {
+            /* Set a maximum height to display only four contacts */
+            max-height: 220px; /* Adjust the height based on your line height */
+            overflow-y: auto; /* Enable vertical scrollbar when necessary */
+        }
+        .contacts, .favourites {
+            max-height: 220px; /* Adjust the height based on your line height to fit 4 items */
+            overflow-y: auto; /* Enable vertical scrollbar when necessary */
+            margin-bottom: 1rem;
+        }
         h1, h3 {
             width: 100%;
             text-align: left;
@@ -39,7 +49,6 @@
         ul {
             list-style-type: none;
             padding: 0;
-            width: 100%;
             margin: 0;
         }
         ul li {
@@ -51,6 +60,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background-color 0.3s;
         }
         ul li a {
             color: #007bff; /* Link color */
@@ -106,6 +116,7 @@
     <form action="/logout">
         <button type="submit">Log Out</button>
     </form>
+    <!-- Add the button for Group Chat -->
     <form action="/group_chat">
         <button type="submit">Group Chat</button>
     </form>
