@@ -108,29 +108,25 @@
 
     <br>
 
-    <!-- 修改表单，添加群组聊天功能 -->
     <form id="send_message_form">
         <input type="text" id="message_input" placeholder="Message:">
-        <!-- 添加选择群组的下拉菜单 -->
         <select id="group_select">
             <option value="group1">Group 1</option>
             <option value="group2">Group 2</option>
-            <!-- 添加更多群组选项 -->
+            <!-- More group options -->
         </select>
         <label class="custom-file-input">
             Upload File
             <input type="file" id="file_input" style="display:none;">
         </label>
-
         <button type="submit">Send</button>
-        <button type="button" class="clear">Clear Chat History</button>
-        <button type="submit">Home</button>
+        <button id="clear_messages_btn" type="button">Clear Chat History</button>
+        <button id="homeButton" type="button">Home</button>
     </form>
 
-    <br>
-
+    <!-- Logout button container -->
     <div class="logout-button-container">
-        <button onclick="logout()" class="logout">Log Out</button>
+        <button id="logoutButton" type="button" class="logout">Log Out</button>
     </div>
     <label class="save-chat">
         <input type="checkbox" id="save_chat_checkbox" checked>
@@ -138,85 +134,103 @@
     </label>
 </div>
 
+<!-- Socket.io library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
 <script>
+    // Connect to the socket server
+    const socket = io.connect("http://127.0.0.1:5000");
+
+    // Function to handle sending messages
+    function sendMessage() {
+        let messageInput = document.getElementById('message_input');
+        let fileInput = document.getElementById('file_input');
+        let groupSelect = document.getElementById('group_select');
+
+        // Emit the message if there is content
+        if (messageInput.value.trim().length > 0 || fileInput.files.length > 0) {
+            let file = fileInput.files[0];
+            socket.emit('group_message_sent', {
+                username: "{{current_user.username}}",
+                group: groupSelect.value,
+                message: messageInput.value,
+                file: file ? {
+                    name: file.name,
+                    url: URL.createObjectURL(file)
+                } : null,
+                saveLocally: document.getElementById('save_chat_checkbox').checked
+            });
+
+            // Reset the input fields
+            messageInput.value = '';
+            fileInput.value = null; // Clear the file input
+        }
+    }
+
+    // Function to append messages to the chat display
+    function appendMessage(data) {
+        const messagesContainer = document.getElementById('messages');
+        const messageDiv = document.createElement('div');
+        if (data.file) {
+            messageDiv.innerHTML = `<b>${data.username}: </b>File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
+        } else {
+            messageDiv.textContent = `${data.username}: ${data.message}`;
+        }
+        messagesContainer.appendChild(messageDiv);
+    }
+
+    // Function to save messages to local storage
+    function saveMessageToLocalStorage(data) {
+        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        savedMessages.push(data);
+        localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+    }
+
+    // Function to display saved messages from local storage
+    function displaySavedMessages() {
+        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        savedMessages.forEach(appendMessage);
+    }
+
+    // Function to clear chat history from local storage and display
+    function clearChatHistory() {
+        localStorage.removeItem('chatMessages');
+        document.getElementById('messages').innerHTML = '';
+    }
+
+    // Function to navigate to the home page
+    function navigateHome() {
+        window.location.href = '/home';
+    }
+
+    // Function to log out the user
+    function logout() {
+        window.location.href = '/logout';
+    }
+
+    // When the window loads, set up event listeners and initial state
     window.onload = function () {
-        const socket = io.connect("http://127.0.0.1:5000");
-        const message_input = document.getElementById('message_input');
-        const file_input = document.getElementById('file_input');
-        const save_chat_checkbox = document.getElementById('save_chat_checkbox');
-        const clear_messages_btn = document.getElementById('clear_messages_btn');
-
-        // 处理群组消息的发送
-        document.getElementById('send_message_form').onsubmit = function (e) {
-            e.preventDefault();
-            let message = message_input.value;
-            let file = file_input.files[0]; // 获取选择的文件
-            let selectedGroup = document.getElementById('group_select').value; // 获取选择的群组
-            if (message.length || file) {
-                socket.emit('group_message_sent', {
-                    username: "{{current_user.username}}",
-                    group: selectedGroup, // 将选定的群组传递给服务器
-                    message: message,
-                    file: file ? { // 将文件与消息一起发送
-                        name: file.name,
-                        url: URL.createObjectURL(file)
-                    } : null,
-                    saveLocally: save_chat_checkbox.checked // 包括是否在消息中保存到本地
-                });
-                message_input.value = '';
-                file_input.value = ''; // 重置文件输入
-            }
-        };
-
-        // 处理接收到的群组消息
-        socket.on('recieve_group_message', function (data) {
-            appendMessage(data);
-            if (save_chat_checkbox.checked) {
-                saveMessageToLocalStorage(data);
-            }
-        });
-
-        // 在页面加载时显示已保存的消息
+        // Display any saved messages
         displaySavedMessages();
 
-        // 显示已保存的消息
-        function displaySavedMessages() {
-            const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-            savedMessages.forEach(message => {
-                appendMessage(message);
-            });
-        }
+        // Add event listener for sending messages
+        document.getElementById('send_message_form').onsubmit = function (e) {
+            e.preventDefault();
+            sendMessage();
+        };
 
-        // 添加消息到聊天内容区域
-        function appendMessage(data) {
-            const newNode = document.createElement('div');
-            if (data.file) {
-                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> File: <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
-            } else {
-                newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        // Add event listener for clearing chat history
+        document.getElementById('clear_messages_btn').onclick = clearChatHistory;
+
+        // Add event listeners for navigation and logout
+        document.getElementById('homeButton').onclick = navigateHome;
+        document.getElementById('logoutButton').onclick = logout;
+
+        // Set up listener for incoming messages
+        socket.on('recieve_group_message', function (data) {
+            appendMessage(data);
+            if (document.getElementById('save_chat_checkbox').checked) {
+                saveMessageToLocalStorage(data);
             }
-            document.getElementById('messages').appendChild(newNode);
-        }
-
-        // 将消息保存到本地存储
-        function saveMessageToLocalStorage(message) {
-            let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-            savedMessages.push(message);
-            localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
-        }
-        function navigateHome() {
-            window.location.href = '/home'; // Adjust the URL if needed
-        }
-
-// Log out the user
-        function logout() {
-            window.location.href = '/logout'; // Adjust the URL if needed
-        }
-        // 清除聊天记录按钮点击事件
-        clear_messages_btn.addEventListener('click', function () {
-            localStorage.removeItem('chatMessages');
-            document.getElementById('messages').innerHTML = '';
         });
     };
 </script>
