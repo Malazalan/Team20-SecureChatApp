@@ -10,8 +10,8 @@
         }
         body {
             font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #667eea, #764ba2);
-            color: #fff;
+            background: linear-gradient(to right, #788eef, #9464c4);
+            color: #9a9191;
             text-align: center;
             padding: 50px 0; /* Add padding to the top and bottom of the page */
         }
@@ -20,7 +20,7 @@
             max-width: 800px;
             margin: 50px auto;
             padding: 40px;
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.4);
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             color: #333;
@@ -36,7 +36,7 @@
         #messages {
             margin-bottom: 20px;
             padding: 10px;
-            background-color: #f7f7f7;
+            background-color: rgba(255, 255, 255, 0.5);
             border-radius: 4px;
             height: 300px;
             overflow-y: auto;
@@ -69,12 +69,12 @@
         }
 
         .custom-file-input::before {
-            content: 'Select file';
+            content: 'upload';
             display: inline-block;
             padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
-            background-color: #007bff;
+            background-color: #2d8cf3;
             color: #fff;
             text-align: center;
             width: 100%;
@@ -82,7 +82,7 @@
         }
 
         .custom-file-input:hover::before {
-            background-color: #0056b3;
+            background-color: #095ab0;
         }
 
         .custom-file-input input[type="file"] {
@@ -100,7 +100,7 @@
             margin-bottom: 10px;
             border-radius: 4px;
             border: none;
-            background-color: #007bff;
+            background-color: #298dfa;
             color: #fff;
             cursor: pointer;
             transition: background-color 0.2s;
@@ -204,7 +204,7 @@
 
 
         <div class="custom-file-input" id="fileInputLabel">
-            <input type="file" id="file_input" style="display:none;" disabled>
+            <input type="file" id="file_input" style="display:block;">
             <span class="tooltip-text">Maximum allowed upload file size is 100MB</span>
         </div>
 
@@ -219,6 +219,7 @@
         <input type="checkbox" id="save_chat_checkbox"checked>
         <label for="save_chat_checkbox">Save received messages locally</label>
     </div>
+</div>
 </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
@@ -336,6 +337,7 @@
             // Logic to navigate to home
             window.location.href = '/home'; // Replace with your home route
         }
+
     </script>
 </body>
 </html>
