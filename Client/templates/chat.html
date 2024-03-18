@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Home</title>
+</head>
+<body>
+    
+    <h1>Logged in user:{{ current_user.username }}</h1>
+    
+    <h2>Chatting with {{target_user_id}}</h2>
+    
+    <div id="messages">
+    <b>Contents of chat:</b>
+    <br>
+    <b>----------------------------------------------</b>
+    </div>
+
+    <b>----------------------------------------------</b>
+    
+    <br> 
+
+    <form id="send_message_form">
+        <input type = "text" id = "message_input" placeholder="Message:">
+        <button type="submit">Send</button>
+    </form>
+
+    <form id="send_file_form">
+        <input type="file" id="file_input" name="file_input">
+        <button type="submit">Send File</button>
+    </form>
+
+    <br>
+
+    <form action="/home">
+        <button type="submit">Home</button>
+    </form>
+
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+
+<script>
+// TODO: Add something to show if a user is online (do this by checking the database)
+// TODO: add an option to clear the history for this chat
+// TODO: add a checkbox for if messages should be saved to local storage
+
+window.onload = function() {  
+    const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+    savedMessages.forEach(message => {
+        if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
+            console.log(message); 
+            appendMessage(message);
+        }
+        // TODO: Can probably do this more concisely than two if's 
+        if (message.target === "{{current_user.username}}" && message.username === "{{target_user_id}}") {
+            console.log(message); 
+            appendMessage(message);
+        }
+    });
+};
+
+    const socket = io.connect("{{ip_addr}}");
+    socket.on('connect', function(){
+        socket.emit('user_connect',{
+            username: "{{current_user.username}}",
+            target: "{{target_user_id}}"
+        })
+    })
+
+    let message_input = document.getElementById('message_input');
+
+    document.getElementById('send_message_form').onsubmit = function (e) {
+        e.preventDefault();
+        let message = message_input.value;//.trim();
+        if (message.length){
+            socket.emit('message_sent',{
+                username: "{{current_user.username}}",
+                target: "{{target_user_id}}",
+                message: message
+            })
+
+        message_input.value = '';
+        }
+    }
+
+    socket.on('recieve_message', function (data) {
+        console.log(data);
+        const newNode = document.createElement('div');
+        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        document.getElementById('messages').appendChild(newNode);
+        if (data.message !== "Message failed to send, target user not online") {
+            saveMessageToLocalStorage(data);
+        }
+    });
+
+    socket.on('recieve_file', function (data) {
+        console.log(data);
+        const newNode = document.createElement('div');
+        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${data.file}" download="${data.file_name}">${data.file_name}</a>`;
+        document.getElementById('messages').appendChild(newNode);
+        
+    });
+
+    function appendMessage(data) {
+        const newNode = document.createElement('div');
+        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        document.getElementById('messages').appendChild(newNode);
+    }
+
+    function saveMessageToLocalStorage(message) {
+        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        savedMessages.push(message);
+        localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
+    }
+
+</script>
+
+<script>
+    document.getElementById('send_file_form').onsubmit = function (e) {
+        e.preventDefault();
+        let file = document.getElementById('file_input');
+        if(file.files.length) {
+            var fileName = file.files[0].name;
+            var reader = new FileReader();
+            reader.onload = function(e)
+            {
+                suitable_name = e.target.result
+                socket.emit('file_sent', {
+                username: "{{current_user.username}}",
+                target: "{{target_user_id}}",
+                suitable_name: suitable_name,
+                file_name: fileName
+                });
+                document.getElementById('file_input').value = '';
+            };
+            reader.readAsDataURL(file.files[0]);
+        }
+    }
+    </script>
+</html>
