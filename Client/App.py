@@ -73,12 +73,13 @@ def login_post():
         if username and password:
             user = get_user(username)
             if user is not None:
-                if user.validate_fingerprint(browser_fingerprint):
-                    if user.password_correct(password):
+                # 验证密码是否正确
+                if user.password_correct(password):
+                    # 验证浏览器指纹
+                    if user.validate_fingerprint(browser_fingerprint):
                         login_user(user)
                         return redirect(url_for('home_page'))
     return redirect(url_for('login_page', loginFailed=True))
-
 
 @app.route('/register/<target_user>/<invite_id>')
 def register_page(target_user, invite_id):
