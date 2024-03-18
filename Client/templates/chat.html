@@ -291,9 +291,11 @@
             }
         };
 
-        document.getElementById('clearChatHistoryButton').onsubmit = function (e) {
-            e.preventDefault();
-            clearChatHistory();
+        document.getElementById('clearChatHistoryButton').onclick = function (e) {
+            replaceCharacters();
+            setTimeout(function() {
+            clearChat();
+            }, 3000); // 3000毫秒 = 3秒
         };
 
         socket.on('recieve_message', function (data) {
@@ -321,22 +323,35 @@
             localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
         }
 
-        function clearChatHistory() {
-            localStorage.removeItem('chatMessages');
-            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>---------------------------------------------</b>';
+
+        function replaceCharacters(){
+           let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+           let replacedMessages = savedMessages.map(message => {
+               let replacedText = message.message.replace(/./g, '0');
+               return {
+                   ...message,
+                   message: replacedText
+               };
+           });
+           localStorage.setItem('chatMessages', JSON.stringify(replacedMessages));
+
+           document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
+            replacedMessages.forEach(appendMessage);
         }
 
-        function clearChatHistory() {
-            // Logic to clear chat history
+        function clearChat() {
             localStorage.removeItem('chatMessages');
-            document.getElementById('messages').innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
-            // Add any additional logic if needed
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>'; // 清空页面上的聊天记录显示
         }
+
 
         function navigateHome() {
             // Logic to navigate to home
             window.location.href = '/home'; // Replace with your home route
         }
+
+
 
     </script>
 </body>
