@@ -29,9 +29,12 @@
             align-items: stretch;
         }
 
+
+
         h1, h2 {
             margin-bottom: 20px; /* Add margin to headings */
         }
+
 
         #messages {
             margin-bottom: 20px;
@@ -42,10 +45,19 @@
             overflow-y: auto;
             border: 1px solid #ddd;
         }
-
+        form#send_message_form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
         form {
-            width: calc(100% - 40px); /* Account for padding */
-            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px; /* Adjust spacing between form elements */
+            width: 100%;
         }
 
         input[type="text"],
@@ -57,27 +69,24 @@
         }
 
         input[type="checkbox"] {
-            margin-right: 5px;
-            cursor: pointer;
+            min-width: 120px;
+            padding: 10px 20px;
         }
 
         .custom-file-input {
             position: relative;
             display: inline-block;
-            width: 100%;
-            margin-bottom: 10px;
         }
 
         .custom-file-input::before {
             content: 'upload';
-            display: inline-block;
+            display: block;
             padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
             background-color: #2d8cf3;
             color: #fff;
             text-align: center;
-            width: 100%;
             transition: background-color 0.2s;
         }
 
@@ -97,7 +106,6 @@
 
         button {
             padding: 10px 20px;
-            margin-bottom: 10px;
             border-radius: 4px;
             border: none;
             background-color: #298dfa;
@@ -116,25 +124,21 @@
             cursor: not-allowed;
         }
 
+
         .button-container {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center; /* Align items vertically */
             flex-wrap: wrap; /* Allows buttons to wrap onto the next line if space is limited */
             gap: 10px; /* Adds a gap between the buttons */
             margin-top: 10px; /* Space above the button container */
         }
-        /* Style for Save chat checkbox container */
-        .save-chat-container {
-            display: flex;
-            align-items: center;
-            justify-content: center; /* Center the checkbox and label */
-            gap: 5px; /* Space between the checkbox and label */
-            margin-top: 20px; /* Space above the checkbox container */
-        }
-        /* Additional styling for checkbox and label for consistency */
+
+
         #save_chat_checkbox {
             cursor: pointer;
+            margin-right: -40px;
+
         }
 
         .save-chat-container label {
@@ -143,17 +147,21 @@
 
         /* Ensure button and checkbox sizes are consistent */
         button, input[type="checkbox"] {
-            min-width: 120px; /* Ensures a minimum width for buttons */
+            min-width: 100px; /* Ensures a minimum width for buttons */
             padding: 10px 20px; /* Consistent padding for buttons */
+        }
+        #consentCheckbox {
+            margin-right: -30px; /* 增加复选框和标签之间的间距 */
         }
         .consent-container {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
+            margin-left: 1px;
         }
 
         .consent-container label {
-            margin-left: 5px;
+            margin-right: 1px;
         }
         .custom-file-input .tooltip-text {
             visibility: hidden;
