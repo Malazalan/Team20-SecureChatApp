@@ -1,7 +1,7 @@
 import re
 import time
 
-from EncryptionService import rsa_encrypt, rsa_decrypt
+from EncryptionService import rsa_encrypt, rsa_decrypt, get_private_key, get_public_key
 
 plaintext_size = 180
 ciphertext_size = 256
@@ -31,13 +31,19 @@ def cleanse_message_(message):
     return message
 
 
-def form_message_blocks(message, packet_size, target_public_key, server_public_key):
+def form_message_blocks(message, packet_size, target_public_key):
     # Convert full_message into chunks that are small enough to be encrypted
     # Encrypt each chunk
     # For each encrypted chunk, chunk & pad the result based on packet_size
     full_message = message.form_message()
 
+    if rsa_encrypt(target_public_key, "hello") != rsa_encrypt(get_public_key(), "hello"):
+        print("FFFFFFFFFFFFFFFFFFFFFFUCK")
+    else:
+        print("YYYYYYYYYYYYAAAAAAAAAAAAAAAAAYYYYYYYYYYYYYYYYYY")
+
     # Convert full_message into chunks that are small enough to be encrypted
+    print(f"{type(message)} + {full_message}")
     if type(message) == MessageFile:
         message_as_bytes = full_message
     else:
@@ -53,6 +59,7 @@ def form_message_blocks(message, packet_size, target_public_key, server_public_k
         valid = True
         ciphertext_chunks = []
         full_ciphertext = b""
+        print(target_public_key)
         for chunk in plaintext_chunks:
             encrypted_chunk = rsa_encrypt(target_public_key, chunk)
             while split_char in encrypted_chunk:
@@ -62,6 +69,7 @@ def form_message_blocks(message, packet_size, target_public_key, server_public_k
             #if split_char in chunk:
                 #valid = False
             full_ciphertext += chunk
+            print(f"Chunk - {chunk}")
 
     # For each encrypted chunk, chunk & pad the result based on packet_size
     padded_ciphertext_chunks = []
@@ -106,17 +114,17 @@ def form_message_blocks(message, packet_size, target_public_key, server_public_k
     return padded_ciphertext_chunks, meta_padded_ciphertext_chunks
 
 
-def decrypt_wrapper(private_key, data, type):
+def decrypt_wrapper(data, type):
     stripped_data = data.replace(split_char, b'')
     ciphertext_chunks = [stripped_data[i:i + ciphertext_size] for i in range(0, len(stripped_data), ciphertext_size)]
     if type == 1:
         plaintext = b""
         for chunk in ciphertext_chunks:
-            plaintext += rsa_decrypt(private_key, chunk)
+            plaintext += rsa_decrypt(chunk)
     elif type == 2:
         plaintext = b''
         for chunk in ciphertext_chunks:
-            plaintext += rsa_decrypt(private_key, chunk)
+            plaintext += rsa_decrypt(chunk)
     else:
         print("This is impossible")
         return "An error occurred in decryption"
@@ -156,7 +164,7 @@ class Message:
         # TODO cleanse data for SQL & XSS
         #print(self.signature)
         inner_message_plaintext = (self.data + chr(30) + str(self.signature) + chr(30) + self.sender + chr(30) +
-                                   str(self.time_stamp))
+                                   str(self.time_stamp) + chr(30) + self.target)
 
         #print(f"\nInner plaintext - {inner_message_plaintext}")
 

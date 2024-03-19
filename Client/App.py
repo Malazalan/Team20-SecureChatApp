@@ -7,6 +7,7 @@ import os
 import gdown
 
 import Database
+
 importlib.reload(Database)
 import User
 importlib.reload(User)
@@ -16,13 +17,16 @@ import CleaningML
 importlib.reload(CleaningML)
 
 from User import User
-from Database import get_user, get_user_ids
+from Database import get_user, get_user_ids, get_public_key_from_user, add_public_key_to_user, add_public_key_to_all_users
 from SocketComms import * # should maybe be changed but * works for now
 
 app = Flask(__name__)
 socketio = SocketIO(app, max_http_buffer_size=10000000)
 
 app.secret_key = "very_secret_key" # TODO: this
+
+server_ip = "127.0.0.1"
+test_multiple_server_ips = [server_ip, "1.2.3.4", "5.6.7.8"]
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -58,6 +62,7 @@ if os.path.exists("cert.pem") and os.path.exists("key.pem"):
     ip_addr = "https://team20.joe-bainbridge.com/"
 else:
     ip_addr = "http://127.0.0.1:5000"
+
 
 @app.route('/')
 def login_page():
@@ -154,12 +159,16 @@ def handle_message_sent(data):
         if not predicted_safe: # probably a better way to do all this error handling stuff to be honest
             error = f"Message detected as {ml_prediction.predicted_label} attack by ML model."
         if target_room is not None and predicted_safe:
-            socketio.emit('recieve_message', data, room=sender_room)
-            socketio.emit('recieve_message', data, room=target_room)
+            socketio.emit('receive_message', data, room=sender_room)
+            write_thread = threading.Thread(target=prepare_message,
+                                           args=(data['username'], data['target'], data['message'],
+                                                 get_public_key_from_user(data['target']), Message_Type.TEXT,
+                                                 test_multiple_server_ips))
+            write_thread.start()
         else:
             failure_data = data
             failure_data['message'] = f"Message failed to send, {error}"
-            socketio.emit('recieve_message', data, room=sender_room)
+            socketio.emit('receive_message', data, room=sender_room)
            
 @socketio.on('file_sent')
 def handle_file_sent(data):
@@ -173,14 +182,14 @@ def handle_file_sent(data):
             sender_room = request.sid
             target_room = target.current_room
             if target_room is not None:
-                socketio.emit('recieve_file', {
+                socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
                     'file': file,
                     'file_name': file_name,
 
                 }, room=sender_room)
-                socketio.emit('recieve_file', {
+                socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
                     'file': file,
@@ -190,13 +199,21 @@ def handle_file_sent(data):
             else:
                 failure_data = data
                 failure_data['message'] = "File failed to send, target user not online"
-                socketio.emit('recieve_message', data, room=sender_room)
+                socketio.emit('receive_message', data, room=sender_room)
         
 if __name__ == '__main__':
-    if os.path.exists("cert.pem") and os.path.exists("key.pem"):
-        socketio.run(app, debug=True, ssl_context=('cert.pem', 'key.pem'), port=443)
+    listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(), socketio))
+    listen_thread.start()
+    add_public_key_to_all_users(get_public_key())
+    socketio.run(app, debug=True, use_reloader=False)
+
+    listen_thread.join(timeout=5)  # Timeout in seconds
+    if listen_thread.is_alive():
+        print("Warning: listen_thread did not terminate gracefully.")
     else:
-        socketio.run(app, debug=True)
+        print("listen_thread terminated gracefully")
+
+
 
         
 

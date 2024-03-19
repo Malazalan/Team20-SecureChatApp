@@ -120,7 +120,7 @@ window.onload = function() {
         }
     }
 
-    socket.on('recieve_message', function (data) {
+    socket.on('receive_message', function (data) {
         if (data.is_encrypted){
             const newNode = document.createElement('div');
             newNode.innerHTML = `<b>${data.username}:&nbsp;</b> <button value="${data.message}" class="decrypt-button" onclick="decryptMessage(this, this.value)">Decrypt</button>`;
@@ -135,7 +135,7 @@ window.onload = function() {
             }
     });
 
-    socket.on('recieve_file', function (data) {
+    socket.on('receive_file', function (data) {
         const newNode = document.createElement('div');
         newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${data.file}" download="${data.file_name}">${data.file_name}</a>`;
         document.getElementById('messages').appendChild(newNode);

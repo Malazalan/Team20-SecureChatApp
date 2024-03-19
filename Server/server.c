@@ -322,9 +322,9 @@ int main(int argc, char * argv[]) {
     // Alan
     struct Client * Alan = malloc(sizeof(struct Client));
     logDebug(DEBUG, "%d", Alan);
-    Alan->username = malloc(strlen("Alice") + 1);
-    strncpy(Alan->username, "Alice", 5);
-    Alan->usernameSize = strlen("Alice") + 1;
+    Alan->username = malloc(strlen("EnergeticTangerine") + 1);
+    strncpy(Alan->username, "EnergeticTangerine", strlen("EnergeticTangerine") + 1);
+    Alan->usernameSize = strlen("EnergeticTangerine") + 1;
     logDebug(DEBUG, "Pre malloc 327");
     Alan->IP = malloc(strlen("127.0.0.1") + 1);
     logDebug(DEBUG, "Post malloc 327");
@@ -336,10 +336,10 @@ int main(int argc, char * argv[]) {
     struct Client * Joe = malloc(sizeof(struct Client));
     logDebug(DEBUG, "Post malloc 334");
     logDebug(DEBUG, "Pre malloc 337");
-    Joe->username = malloc(strlen("Bob") + 1);
+    Joe->username = malloc(strlen("ResourcefulBoysenberry") + 1);
     logDebug(DEBUG, "Post malloc 337");
-    strncpy(Joe->username, "Bob", 4);
-    Joe->usernameSize = strlen("Bob") + 1;
+    strncpy(Joe->username, "ResourcefulBoysenberry", strlen("ResourcefulBoysenberry") + 1);
+    Joe->usernameSize = strlen("ResourcefulBoysenberry") + 1;
     logDebug(DEBUG, "Pre malloc 342");
     Joe->IP = malloc(strlen("127.0.0.1") + 1);
     logDebug(DEBUG, "Post malloc 342");
