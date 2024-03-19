@@ -5,9 +5,10 @@ from flask_socketio import SocketIO
 import importlib
 import os
 import gdown
+import datetime
+from cryptography.fernet import Fernet
 
 import Database
-
 importlib.reload(Database)
 import User
 importlib.reload(User)
@@ -35,6 +36,9 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 
+invite_id_key = "jQZ-Ijedw017l5T_UR_KmOToGYVwEKhln3udhsm39Zw=" # This could be more secure #Fernet.generate_key()
+invite_id_cipher = Fernet(invite_id_key)
+
 use_ml = False
 
 if use_ml:
@@ -59,13 +63,10 @@ if use_ml:
 
     ml_model = CleaningML.CleaningML() 
 
-
-
 if os.path.exists("cert.pem") and os.path.exists("key.pem"):
     ip_addr = "https://team20.joe-bainbridge.com/"
 else:
     ip_addr = "http://127.0.0.1:5000"
-
 
 @app.route('/')
 def login_page():
@@ -104,11 +105,26 @@ def login_function():
 
 @app.route('/register/<target_user>/<invite_id>')
 def register_page(target_user, invite_id):
+    error = "invalid invitation" # Default error message
+
     if current_user.is_authenticated:
          logout_user()
+         
     invite = Database.get_invite(target_user)
-    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']):
+
+    decrypted_invite_id = invite_id_cipher.decrypt(invite_id.encode()).decode()
+    
+    converted_time = datetime.datetime.strptime(decrypted_invite_id, "%Y%m%d%H%M%S")
+    time_difference = datetime.datetime.now() - converted_time 
+    invite_expired = False if  time_difference < datetime.timedelta(days=1) else True
+
+    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']) and not invite_expired:
         return render_template('register.html', username = target_user)
+    
+    if invite and invite_expired:
+            Database.remove_invite(target_user)
+            error = "invatation expired"
+    print(f"Error: {error}")
     return redirect(url_for('login_page')) 
 
 @app.route('/register_submit', methods = ['GET', 'POST'])
