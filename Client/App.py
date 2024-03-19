@@ -154,12 +154,13 @@ def handle_message_sent(data):
         if not predicted_safe: # probably a better way to do all this error handling stuff to be honest
             error = f"Message detected as {ml_prediction.predicted_label} attack by ML model."
         if target_room is not None and predicted_safe:
-            socketio.emit('recieve_message', data, room=sender_room)
-            socketio.emit('recieve_message', data, room=target_room)
+
+            #socketio.emit('receive_message', data, room=sender_room)
+            #socketio.emit('receive_message', data, room=target_room)
         else:
             failure_data = data
             failure_data['message'] = f"Message failed to send, {error}"
-            socketio.emit('recieve_message', data, room=sender_room)
+            socketio.emit('receive_message', data, room=sender_room)
            
 @socketio.on('file_sent')
 def handle_file_sent(data):
@@ -173,14 +174,14 @@ def handle_file_sent(data):
             sender_room = request.sid
             target_room = target.current_room
             if target_room is not None:
-                socketio.emit('recieve_file', {
+                socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
                     'file': file,
                     'file_name': file_name,
 
                 }, room=sender_room)
-                socketio.emit('recieve_file', {
+                socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
                     'file': file,
@@ -190,7 +191,7 @@ def handle_file_sent(data):
             else:
                 failure_data = data
                 failure_data['message'] = "File failed to send, target user not online"
-                socketio.emit('recieve_message', data, room=sender_room)
+                socketio.emit('receive_message', data, room=sender_room)
         
 if __name__ == '__main__':
     if os.path.exists("cert.pem") and os.path.exists("key.pem"):
