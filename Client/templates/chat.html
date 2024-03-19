@@ -24,15 +24,16 @@
         <button type="submit">Send</button>
         <button type="submit" id="encrypt_button">Send Encrypted</button>
     </form>
-
+    
     <form id="send_file_form">
         <input type="file" id="file_input" name="file_input">
         <button type="submit">Send File</button>
     </form>
-
-    
-    <p><input type = "text" id ="key_input" placeholder="Encryption Key:"></p>
-   
+    <br> 
+    <form id="encryption_form" action="none">
+        <input type = "text" id ="key_input" placeholder="Encryption Key:">
+        <button id="decrypt_all_button" onclick="decryptAll(); return false;">Decrypt All</button>
+    </form>
     <br>
 
 
@@ -180,7 +181,6 @@ window.onload = function() {
         }
     }
 
-    
     async function encryptMessage(plaintext, password) {
         const textEncoder = new TextEncoder();
         const message = plaintext;
@@ -209,7 +209,7 @@ window.onload = function() {
     }
 
     async function decryptMessage(button, value) {
-        //try {
+        try {
             const textEncoder = new TextEncoder();
             const textDecoder = new TextDecoder();
 
@@ -243,9 +243,19 @@ window.onload = function() {
             const username = usernameElement.textContent;
             const newHTML = `<b>${username}</b> ${decryptedMessage}`;
             parentNode.innerHTML = newHTML;
-}
 
+        } catch (error) {
+        //alert("Decryption failed. Please check your password and try again.");
+        //
+        }
+        }
 
+        function decryptAll() {
 
+        const decryptButtons = document.querySelectorAll('.decrypt-button');
+        decryptButtons.forEach(button => {
+            decryptMessage(button, button.value);
+        });
+    }
     </script>
 </html>
