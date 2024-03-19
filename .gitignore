@@ -1,0 +1,9 @@
+Client/venv/*
+Client/TestImg.jpg
+Client/cert.pem
+Client/key.pem
+Client/__pycache__/*
+Client/.idea/*
+Client/model.pt
+Client/vocab.pkl
+Client/formatted_data.csv
