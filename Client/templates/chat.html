@@ -22,6 +22,7 @@
     <form id="send_message_form">
         <input type = "text" id = "message_input" placeholder="Message:">
         <button type="submit">Send</button>
+        <button type="submit" id="encrypt_button">Send Encrypted</button>
     </form>
 
     <form id="send_file_form">
@@ -29,7 +30,11 @@
         <button type="submit">Send File</button>
     </form>
 
+    
+    <p><input type = "text" id ="key_input" placeholder="Encryption Key:"></p>
+   
     <br>
+
 
     <form action="/home">
         <button type="submit">Home</button>
@@ -51,7 +56,7 @@ window.onload = function() {
             console.log(message); 
             appendMessage(message);
         }
-        // TODO: Can probably do this more concisely than two if's 
+        // TODO: Can probably do this more concisely than two if statements
         if (message.target === "{{current_user.username}}" && message.username === "{{target_user_id}}") {
             console.log(message); 
             appendMessage(message);
@@ -72,25 +77,59 @@ window.onload = function() {
     document.getElementById('send_message_form').onsubmit = function (e) {
         e.preventDefault();
         let message = message_input.value;//.trim();
+        let key = key_input.value;
+        let buttonClicked = e.submitter.id;
+        let encrypted = false;
         if (message.length){
-            socket.emit('message_sent',{
-                username: "{{current_user.username}}",
-                target: "{{target_user_id}}",
-                message: message
-            })
+            if (buttonClicked == "encrypt_button") {
+                encrypted = true;
 
-        message_input.value = '';
+                encryptMessage(message, key)
+                .then(encryptedMessage => {
+                    message = encryptedMessage;
+                    console.log("Encrypted");
+                    // Repeated code womp womp
+                    socket.emit('message_sent',{
+                    username: "{{current_user.username}}",
+                    target: "{{target_user_id}}",
+                    message: message,
+                    is_encrypted: encrypted
+                    })
+                    message_input.value = '';
+                })
+                .catch(error => {
+                    console.error("Encryption error:", error);
+                });
+            } else {
+                console.log("Not Encrypted");
+
+                 // Repeated code womp womp
+                socket.emit('message_sent',{
+                    username: "{{current_user.username}}",
+                    target: "{{target_user_id}}",
+                    message: message,
+                    is_encrypted: encrypted
+                })
+                message_input.value = '';
+            }
         }
     }
 
     socket.on('recieve_message', function (data) {
         console.log(data);
-        const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
-        document.getElementById('messages').appendChild(newNode);
-        if (data.message !== "Message failed to send, target user not online") {
-            saveMessageToLocalStorage(data);
+        if (data.is_encrypted){
+            console.log("Lol")
+            const newNode = document.createElement('div');
+            newNode.innerHTML = `<b>${data.username}:&nbsp;</b> <button value="${data.message}" class="decrypt-button" onclick="decryptMessage(this, this.value)">Decrypt</button>`;
+            document.getElementById('messages').appendChild(newNode);
+        }else{
+            const newNode = document.createElement('div');
+            newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+            document.getElementById('messages').appendChild(newNode);
         }
+        if (data.message !== "Message failed to send, target user not online") {
+                saveMessageToLocalStorage(data);
+            }
     });
 
     socket.on('recieve_file', function (data) {
@@ -103,7 +142,11 @@ window.onload = function() {
 
     function appendMessage(data) {
         const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        if (data.is_encrypted){
+            newNode.innerHTML = `<b>${data.username}:&nbsp;</b> <button value="${data.message}" class="decrypt-button" onclick="decryptMessage(this, this.value)">Decrypt</button>`;
+        }else{
+            newNode.innerHTML = `<b>${data.username}:&nbsp;</b> ${data.message}`;
+        }
         document.getElementById('messages').appendChild(newNode);
     }
 
@@ -136,5 +179,73 @@ window.onload = function() {
             reader.readAsDataURL(file.files[0]);
         }
     }
+
+    
+    async function encryptMessage(plaintext, password) {
+        const textEncoder = new TextEncoder();
+        const message = plaintext;
+
+        const passwordBuffer = textEncoder.encode(password);
+        const salt = new Uint8Array(Array.from(atob("mp44pqKc2xuQNyth3XQVgw=="), c => c.charCodeAt(0))); // yeah i know //crypto.getRandomValues(new Uint8Array(16)); // Generate a random salt
+        const keyMaterial = await crypto.subtle.importKey("raw", passwordBuffer, {name: "PBKDF2"}, false, ["deriveKey"]);
+        const derivedKey = await crypto.subtle.deriveKey(
+            {name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256"},
+            keyMaterial,
+            {name: "AES-GCM", length: 256},
+            true,
+            ["encrypt"]
+        );
+
+        const encodedMessage = textEncoder.encode(message);
+        const encryptedData = await crypto.subtle.encrypt({ name: "AES-GCM", iv: salt }, derivedKey, encodedMessage);
+        const encryptedMessage = new Uint8Array(encryptedData);
+
+        const ciphertext = btoa(String.fromCharCode.apply(null, encryptedMessage));
+
+        console.log(ciphertext)
+
+        return ciphertext
+
+    }
+
+    async function decryptMessage(button, value) {
+        //try {
+            const textEncoder = new TextEncoder();
+            const textDecoder = new TextDecoder();
+
+            const encryptedMessage = value
+            const password = document.getElementById("key_input").value;
+            const salt = "mp44pqKc2xuQNyth3XQVgw=="; //So secure I know //document.getElementById("salt").textContent;
+            console.log(encryptedMessage)
+
+            const passwordBuffer = textEncoder.encode(password);
+            const keyMaterial = await crypto.subtle.importKey("raw", passwordBuffer, { name: "PBKDF2" }, false, ["deriveKey"]);
+            const derivedKey = await crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: new Uint8Array(atob(salt).split("").map(char => char.charCodeAt(0))), iterations: 100000, hash: "SHA-256" },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["decrypt"]
+            );
+            
+            const encryptedData = Uint8Array.from(atob(encryptedMessage), c => c.charCodeAt(0));
+
+            const decryptedData = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: new Uint8Array(atob(salt).split("").map(char => char.charCodeAt(0))) },
+                derivedKey,
+                encryptedData
+            );
+
+            const decryptedMessage = textDecoder.decode(decryptedData);
+
+            const parentNode = button.parentNode;
+            const usernameElement = parentNode.querySelector('b');
+            const username = usernameElement.textContent;
+            const newHTML = `<b>${username}</b> ${decryptedMessage}`;
+            parentNode.innerHTML = newHTML;
+}
+
+
+
     </script>
 </html>
