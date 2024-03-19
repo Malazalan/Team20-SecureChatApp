@@ -4,12 +4,16 @@ from flask_login import LoginManager, login_user, login_required, current_user, 
 from flask_socketio import SocketIO
 import importlib
 import os
+import gdown
+
 import Database
 importlib.reload(Database)
 import User
 importlib.reload(User)
 import SocketComms
 importlib.reload(SocketComms)
+import CleaningML
+importlib.reload(CleaningML)
 
 from User import User
 from Database import get_user, get_user_ids
@@ -23,6 +27,31 @@ app.secret_key = "very_secret_key" # TODO: this
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
+
+use_ml = False
+
+if use_ml:
+    
+    if not os.path.exists("model.pt"):
+        file_id = "1QbcnHy7tCotS00VYUHBO1lZL0jT1g-1K"
+        url = f'https://drive.google.com/uc?id={file_id}'
+        output = 'model.pt'  
+        gdown.download(url, output, quiet=False)
+
+    if not os.path.exists("vocab.pkl"):
+        file_id = "1QxM3U94Ak2uLAamUkA9q-zQxORyPVyK7"
+        url = f'https://drive.google.com/uc?id={file_id}'
+        output = 'vocab.pkl' 
+        gdown.download(url, output, quiet=False)
+
+    if not os.path.exists("formatted_data.csv"):
+        file_id = "1xkIkUJWn_p-K_Lza9dqFWWe2QOb0mlqE"
+        url = f'https://drive.google.com/uc?id={file_id}'
+        output = 'formatted_data.csv' 
+        gdown.download(url, output, quiet=False)
+
+    ml_model = CleaningML.CleaningML() 
+
 
 
 if os.path.exists("cert.pem") and os.path.exists("key.pem"):
@@ -114,17 +143,22 @@ def handle_disconnect_event():
    
 @socketio.on('message_sent')
 def handle_message_sent(data):
+    error = "target user not online" # maybe a bit janky 
     app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
     target = get_user(data['target'])
     if target:
         sender_room = request.sid
         target_room = target.current_room
-        if target_room is not None:
+        ml_prediction = ml_model.predict(data['message']) if use_ml else None
+        predicted_safe = ml_prediction.predicted_safe if use_ml else True
+        if not predicted_safe: # probably a better way to do all this error handling stuff to be honest
+            error = f"Message detected as {ml_prediction.predicted_label} attack by ML model."
+        if target_room is not None and predicted_safe:
             socketio.emit('recieve_message', data, room=sender_room)
             socketio.emit('recieve_message', data, room=target_room)
         else:
             failure_data = data
-            failure_data['message'] = "Message failed to send, target user not online"
+            failure_data['message'] = f"Message failed to send, {error}"
             socketio.emit('recieve_message', data, room=sender_room)
            
 @socketio.on('file_sent')
