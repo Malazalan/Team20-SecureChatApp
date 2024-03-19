@@ -24,7 +24,6 @@ private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 public_key = private_key.public_key()
 
 server_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-#print(server_private_key)
 server_public_key = server_private_key.public_key()
 
 def get_private_key():
@@ -229,7 +228,7 @@ def rsa_encrypt(public_key, data):
         return f"Unexpected error - {str(e)}"
 
 
-def rsa_decrypt(private_key, encrypted_data):
+def rsa_decrypt(encrypted_data):
     try:
         decrypted = private_key.decrypt(
             encrypted_data,
