@@ -54,12 +54,12 @@ window.onload = function() {
     const savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
     savedMessages.forEach(message => {
         if (message.target === "{{target_user_id}}" && message.username === "{{current_user.username}}") {
-            console.log(message); 
+            //console.log(message); 
             appendMessage(message);
         }
         // TODO: Can probably do this more concisely than two if statements
         if (message.target === "{{current_user.username}}" && message.username === "{{target_user_id}}") {
-            console.log(message); 
+            //console.log(message); 
             appendMessage(message);
         }
     });
@@ -88,7 +88,7 @@ window.onload = function() {
                 encryptMessage(message, key)
                 .then(encryptedMessage => {
                     message = encryptedMessage;
-                    console.log("Encrypted");
+                    //console.log("Encrypted");
                     // Repeated code womp womp
                     socket.emit('message_sent',{
                     username: "{{current_user.username}}",
@@ -102,7 +102,7 @@ window.onload = function() {
                     console.error("Encryption error:", error);
                 });
             } else {
-                console.log("Not Encrypted");
+                //console.log("Not Encrypted");
 
                  // Repeated code womp womp
                 socket.emit('message_sent',{
@@ -117,9 +117,8 @@ window.onload = function() {
     }
 
     socket.on('recieve_message', function (data) {
-        console.log(data);
+        //console.log(data);
         if (data.is_encrypted){
-            console.log("Lol")
             const newNode = document.createElement('div');
             newNode.innerHTML = `<b>${data.username}:&nbsp;</b> <button value="${data.message}" class="decrypt-button" onclick="decryptMessage(this, this.value)">Decrypt</button>`;
             document.getElementById('messages').appendChild(newNode);
@@ -134,7 +133,7 @@ window.onload = function() {
     });
 
     socket.on('recieve_file', function (data) {
-        console.log(data);
+        //console.log(data);
         const newNode = document.createElement('div');
         newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${data.file}" download="${data.file_name}">${data.file_name}</a>`;
         document.getElementById('messages').appendChild(newNode);
@@ -202,7 +201,7 @@ window.onload = function() {
 
         const ciphertext = btoa(String.fromCharCode.apply(null, encryptedMessage));
 
-        console.log(ciphertext)
+        //console.log(ciphertext)
 
         return ciphertext
 
@@ -216,7 +215,7 @@ window.onload = function() {
             const encryptedMessage = value
             const password = document.getElementById("key_input").value;
             const salt = "mp44pqKc2xuQNyth3XQVgw=="; //So secure I know //document.getElementById("salt").textContent;
-            console.log(encryptedMessage)
+            //console.log(encryptedMessage)
 
             const passwordBuffer = textEncoder.encode(password);
             const keyMaterial = await crypto.subtle.importKey("raw", passwordBuffer, { name: "PBKDF2" }, false, ["deriveKey"]);
