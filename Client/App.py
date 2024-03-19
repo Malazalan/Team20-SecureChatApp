@@ -112,11 +112,15 @@ def register_page(target_user, invite_id):
          
     invite = Database.get_invite(target_user)
 
-    decrypted_invite_id = invite_id_cipher.decrypt(invite_id.encode()).decode()
-    
-    converted_time = datetime.datetime.strptime(decrypted_invite_id, "%Y%m%d%H%M%S")
-    time_difference = datetime.datetime.now() - converted_time 
-    invite_expired = False if  time_difference < datetime.timedelta(days=1) else True
+    try:
+        decrypted_invite_id = invite_id_cipher.decrypt(invite_id.encode()).decode()
+        
+        converted_time = datetime.datetime.strptime(decrypted_invite_id, "%Y%m%d%H%M%S")
+        time_difference = datetime.datetime.now() - converted_time 
+        invite_expired = False if  time_difference < datetime.timedelta(days=1) else True
+    except: # This should be catching a specific error really 
+        invite_expired = True
+
 
     if invite and invite['invite_id']==invite_id and not get_user(invite['_id']) and not invite_expired:
         return render_template('register.html', username = target_user)
@@ -133,12 +137,11 @@ def register_function():
         password = request.form.get('password')
 
         browser_fingerprint = request.form.get('browserFingerprint') 
-        username = request.headers.get('Referer').split('/')[-2]          
-        email = "bleh@gmail.com" #TODO: remove all refrences to email in all the files - it is not used anymore                                      
+        username = request.headers.get('Referer').split('/')[-2]                                           
         
         user = get_user(username)
         if user is None:  
-            Database.write_user(username, email, password, browser_fingerprint)
+            Database.write_user(username, password, browser_fingerprint)
             Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
             user = get_user(username)
             if user is not None:
