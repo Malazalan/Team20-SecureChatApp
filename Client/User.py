@@ -5,7 +5,6 @@ class User:
     def __init__(self, user_data):
         
         self.username = user_data['_id']
-        self.email = user_data['email']
         self.password = user_data['password']
         self.browser_fingerprint = user_data['browser_fingerprint']
         self.current_room = user_data['current_room']
@@ -32,4 +31,3 @@ class User:
     
     def password_correct(self, password_to_check):
         return check_password_hash(self.password, password_to_check)
-
