@@ -144,7 +144,7 @@ def handle_disconnect_event():
 @socketio.on('message_sent')
 def handle_message_sent(data):
     error = "target user not online" # maybe a bit janky 
-    app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']}") #this is temporary
+    app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
     target = get_user(data['target'])
     if target:
         sender_room = request.sid
