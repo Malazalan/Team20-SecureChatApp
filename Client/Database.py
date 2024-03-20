@@ -9,6 +9,7 @@ from User import User
 from cryptography.hazmat.primitives.asymmetric import rsa
 from EncryptionService import get_public_key
 
+flask_server_ip = "127.0.0.1"
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017")
 
@@ -27,6 +28,7 @@ def write_user(username, password, browser_fingerprint, current_room=None):
                         'password': password_hash,
                         'browser_fingerprint': browser_fingerprint,
                         'current_room': current_room,
+                        "ip_address": flask_server_ip,
                         "public_key_e": str(get_public_key().public_numbers().e),
                         "public_key_n": str(get_public_key().public_numbers().n)
                         })

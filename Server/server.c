@@ -8,6 +8,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
+#include <mongoc/mongoc.h>
 
 #define PORT 54321
 #define CLIENT_PORT 12345
@@ -315,40 +316,106 @@ char** splitMessage(char* receivedMessage, int* tokenCount) {
     return tokens; // Return the dynamic array of tokens
 }
 
+int isUserInTable(const char* u_id) {
+    mongoc_client_t *client = NULL;
+    mongoc_collection_t *collection = NULL;
+    bson_t *query = NULL;
+    bson_t *opts = NULL;
+    mongoc_cursor_t *cursor = NULL;
+    const bson_t *doc = NULL;
+    bool found = false;
+
+    // Initialize the MongoDB C Driver.
+    mongoc_init();
+
+    // Create a MongoDB client.
+    client = mongoc_client_new("mongodb://localhost:27017");
+    if (!client) {
+        fprintf(stderr, "Failed to create MongoDB client\n");
+        return 1;
+    }
+
+    // Get a handle on the 'users' collection.
+    collection = mongoc_client_get_collection(client, "ChatAppDatabase", "users");
+    if (!collection) {
+        fprintf(stderr, "Failed to get collection handle\n");
+        mongoc_client_destroy(client);
+        return 1;
+    }
+
+    // Construct the query to find the user by _id.
+    query = BCON_NEW("_id", BCON_UTF8(u_id));
+
+    // Execute the query.
+    cursor = mongoc_collection_find_with_opts(collection, query, NULL, NULL);
+
+    // Check if the user exists in the 'users' collection.
+    found = mongoc_cursor_next(cursor, &doc);
+
+    // Cleanup resources.
+    bson_destroy(query);
+    mongoc_cursor_destroy(cursor);
+    mongoc_collection_destroy(collection);
+    mongoc_client_destroy(client);
+    mongoc_cleanup();
+
+    return found ? 0 : 1;
+}
+
+char* getIPAddress(const char* u_id) {
+    mongoc_client_t *client = NULL;
+    mongoc_collection_t *collection = NULL;
+    bson_t *query = NULL;
+    bson_t *opts = NULL;
+    mongoc_cursor_t *cursor = NULL;
+    const bson_t *doc = NULL;
+    char* ip_address = NULL;
+
+    // Initialize the MongoDB C Driver.
+    mongoc_init();
+
+    // Create a MongoDB client.
+    client = mongoc_client_new("mongodb://localhost:27017");
+    if (!client) {
+        fprintf(stderr, "Failed to create MongoDB client\n");
+        return NULL;
+    }
+
+    // Get a handle on the 'users' collection.
+    collection = mongoc_client_get_collection(client, "ChatAppDatabase", "users");
+    if (!collection) {
+        fprintf(stderr, "Failed to get collection handle\n");
+        mongoc_client_destroy(client);
+        return NULL;
+    }
+
+    // Construct the query to find the user by _id.
+    query = BCON_NEW("_id", BCON_UTF8(u_id));
+    opts = BCON_NEW("projection", "{", "ip_address", BCON_INT32(1), "}");
+
+    // Execute the query.
+    cursor = mongoc_collection_find_with_opts(collection, query, opts, NULL);
+
+    // Check if the user exists in the 'users' collection.
+    if (mongoc_cursor_next(cursor, &doc)) {
+        bson_iter_t iter;
+        if (bson_iter_init_find(&iter, doc, "ip_address") && BSON_ITER_HOLDS_UTF8(&iter)) {
+            ip_address = bson_strdup(bson_iter_utf8(&iter, NULL));
+        }
+    }
+
+    // Cleanup resources.
+    bson_destroy(query);
+    bson_destroy(opts);
+    mongoc_cursor_destroy(cursor);
+    mongoc_collection_destroy(collection);
+    mongoc_client_destroy(client);
+    mongoc_cleanup();
+
+    return ip_address;
+}
+
 int main(int argc, char * argv[]) {
-    // TODO make these addable through code - manual for testing
-    struct Client *allClients[MAX_CLIENTS];
-
-    // Alan
-    struct Client * Alan = malloc(sizeof(struct Client));
-    logDebug(DEBUG, "%d", Alan);
-    Alan->username = malloc(strlen("EnergeticTangerine") + 1);
-    strncpy(Alan->username, "EnergeticTangerine", strlen("EnergeticTangerine") + 1);
-    Alan->usernameSize = strlen("EnergeticTangerine") + 1;
-    logDebug(DEBUG, "Pre malloc 327");
-    Alan->IP = malloc(strlen("127.0.0.1") + 1);
-    logDebug(DEBUG, "Post malloc 327");
-    strncpy(Alan->IP, "127.0.0.1", strlen("127.0.0.1") + 1);
-    Alan->IPSize = strlen("127.0.0.1") + 1;
-
-    // Joe
-    logDebug(DEBUG, "Pre malloc 334");
-    struct Client * Joe = malloc(sizeof(struct Client));
-    logDebug(DEBUG, "Post malloc 334");
-    logDebug(DEBUG, "Pre malloc 337");
-    Joe->username = malloc(strlen("ResourcefulBoysenberry") + 1);
-    logDebug(DEBUG, "Post malloc 337");
-    strncpy(Joe->username, "ResourcefulBoysenberry", strlen("ResourcefulBoysenberry") + 1);
-    Joe->usernameSize = strlen("ResourcefulBoysenberry") + 1;
-    logDebug(DEBUG, "Pre malloc 342");
-    Joe->IP = malloc(strlen("127.0.0.1") + 1);
-    logDebug(DEBUG, "Post malloc 342");
-    strncpy(Joe->IP, "127.0.0.1", strlen("127.0.0.1") + 1);
-    Joe->IPSize = strlen("127.0.0.1") + 1;
-
-    allClients[0] = Alan;
-    allClients[1] = Joe;
-
     printf("Team 20 Secure Chat App Server V1\n\n");
 
     // Set up the listening server
@@ -535,22 +602,30 @@ int main(int argc, char * argv[]) {
             }
         }
 
-        for (int i = 0; i < MAX_CLIENTS; i++) {
+        // Check if the target exists
+        if (isUserInTable(tokens[1]) == 0) {
+            logDebug(INFO, "Found %s", tokens[1]);
+            logDebug(INFO, "Got - %s", getIPAddress(tokens[1]));
+            logDebug(TRACE, "Metadata -> %s", metadataToSend);
+            handleWrite(getIPAddress(tokens[1]), &messageHeader, &metadataHeader, &fileMetadataHeader,
+                        receivedMessage, (unsigned char*)metadataToSend);
+        } else {
+            logAction(WARN, tokens[0], "Cannot find %s", tokens[1]);
+        }
+
+        /*for (int i = 0; i < MAX_CLIENTS; i++) {
             // Find the IP address of the target
+            // Check if the target exists
             if (allClients[i] != NULL) {
                 logDebug(TRACE, "Checking %s with %s", tokens[1], allClients[i]->username);
                 if (strcmp(tokens[1], allClients[i]->username) == 0) {
-                    logDebug(TRACE, "Metadata -> %s", metadataToSend);
-
-                    handleWrite(allClients[i]->IP, &messageHeader, &metadataHeader, &fileMetadataHeader,
-                               receivedMessage, (unsigned char*)metadataToSend);
                     break;
                 }
             } else {
                 logAction(WARN, tokens[0], "Cannot find %s", tokens[1]);
                 break;
             }
-        }
+        }*/
 
         //printf("%s\n%s\n---\n", messageToSend, receivedMessage);
 
