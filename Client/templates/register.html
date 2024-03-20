@@ -7,7 +7,7 @@
     <h1>You have been invited to join the secure chat app as: {{username}}</h1>
     <form method = "POST" action="/register_submit"> 
             <label>Enter New Password:</label>
-            <input type="text" name="password">
+            <input type="text" name="password" required>
             <input type="hidden" name="browserFingerprint" id="browserFingerprint">
         <button type="submit">Submit</button>
     </form>
