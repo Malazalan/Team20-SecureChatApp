@@ -43,7 +43,6 @@ def form_message_blocks(message, packet_size, target_public_key):
         print("YYYYYYYYYYYYAAAAAAAAAAAAAAAAAYYYYYYYYYYYYYYYYYY")
 
     # Convert full_message into chunks that are small enough to be encrypted
-    print(f"{type(message)} + {full_message}")
     if type(message) == MessageFile:
         message_as_bytes = full_message
     else:
@@ -59,7 +58,6 @@ def form_message_blocks(message, packet_size, target_public_key):
         valid = True
         ciphertext_chunks = []
         full_ciphertext = b""
-        print(target_public_key)
         for chunk in plaintext_chunks:
             encrypted_chunk = rsa_encrypt(target_public_key, chunk)
             while split_char in encrypted_chunk:
@@ -69,8 +67,6 @@ def form_message_blocks(message, packet_size, target_public_key):
             #if split_char in chunk:
                 #valid = False
             full_ciphertext += chunk
-            print(f"Chunk - {chunk}")
-
     # For each encrypted chunk, chunk & pad the result based on packet_size
     padded_ciphertext_chunks = []
     for chunk in ciphertext_chunks:
@@ -161,31 +157,19 @@ class Message:
         :param server_public_key: Server's RSA public key
         :return: Encrypted string to send to the server
         """
-        # TODO cleanse data for SQL & XSS
-        #print(self.signature)
         inner_message_plaintext = (self.data + chr(30) + str(self.signature) + chr(30) + self.sender + chr(30) +
                                    str(self.time_stamp) + chr(30) + self.target)
-
-        #print(f"\nInner plaintext - {inner_message_plaintext}")
-
         return inner_message_plaintext
 
 
 class MessageFile(Message):
-    def __init__(self, file_path, target, sender, signature):
+    def __init__(self, file_name, data, target, sender, signature):
         super().__init__('', target, sender, signature)  # Initialize with empty data; we'll read the file as binary
-        self.file_name = file_path
-        with open(file_path, "rb") as file:  # Note the "rb" mode here
-            self.data = file.read()
+        self.file_name = file_name
+        self.data = data
 
     def form_message(self):
         # Preparing the binary message payload
-        inner_message_plaintext = (self.data + self.signature + bytes([30]) +
-                                   self.sender.encode('utf-8') + bytes([30]) +
-                                   str(self.time_stamp).encode('utf-8') + bytes([30]) +
-                                   self.file_name.encode('utf-8'))
-
         inner_message_plaintext = self.data + (str(self.signature) + chr(30) + self.sender + chr(30)
-                                               + str(self.time_stamp) + chr(30) + self.file_name).encode('utf-8')
-
+                                               + str(self.time_stamp) + chr(30) + self.file_name + chr(30) + self.target).encode('utf-8')
         return inner_message_plaintext
