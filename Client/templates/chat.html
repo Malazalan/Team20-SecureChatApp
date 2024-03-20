@@ -36,11 +36,10 @@
     </form>
 
 
-    <!-- Checkbox to enable/disable saving chat messages locally -->
-    
     <p>
         <input type="checkbox" id="save_chat_checkbox"checked>
         <label for="save_chat_checkbox">Save received messages locally</label>
+        <button id="clearChatHistoryButton" type="button" onclick="clearChatHistory()">Clear Chat History (all chats)</button>
     </p>
     
     <br>
@@ -168,6 +167,33 @@ window.onload = function() {
         localStorage.setItem('chatMessages', JSON.stringify(savedMessages));
     }
 
+    function clearChatHistory(){
+        let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        let replacedMessages = savedMessages.map(message => {
+        let replacedText = {};
+        for (let key in message) {
+            if (typeof message[key] === 'string') {
+                replacedText[key] = message[key].replace(/./g, '0');
+            } else {
+                replacedText[key] = null; 
+            }
+        }
+        return replacedText;
+    });
+    localStorage.setItem('chatMessages', JSON.stringify(replacedMessages));
+
+    replacedMessages = savedMessages.map(message => {
+        let replacedText = {};
+        for (let key in message) {
+            replacedText[key] =null;
+        }
+        return replacedText;
+    });
+    localStorage.setItem('chatMessages', JSON.stringify(replacedMessages));
+    
+    localStorage.removeItem('chatMessages');
+
+    }
 </script>
 
 <script>
