@@ -69,10 +69,10 @@ else:
     ip_addr = "http://127.0.0.1:5000"
 
 @app.route('/')
-def login_page():
+def login_page(login_failed = False, username=None):
     if current_user.is_authenticated:
         return redirect(url_for('home_page'))
-    return render_template('login.html')
+    return render_template('login.html', login_failed = login_failed, username=username )
 
 @app.route('/home')
 @login_required
@@ -101,7 +101,8 @@ def login_function():
                     if user.password_correct(password):
                         login_user(user)
                         return redirect(url_for('home_page'))
-    return redirect(url_for('login_page')) # TODO: add failure message and keep username in the box
+    #return redirect(url_for('login_page', login_failed = True, username=username)) 
+    return render_template('login.html', login_failed = True, username=username ) # should fix it so it works with the line above really
 
 @app.route('/register/<target_user>/<invite_id>')
 def register_page(target_user, invite_id):

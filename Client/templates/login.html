@@ -8,11 +8,11 @@
     <form method = "POST" action="/login">
         <div>
             <label>Enter your username:</label>
-            <input type="text" name="username">
+            <input type="text" name="username" id="username" required>
         </div>
         <div>
             <label>Enter Password:</label>
-            <input type="text" name="password">
+            <input type="password" name="password" required>
         </div>
         <div>
             <input type="hidden" name="browserFingerprint" id="browserFingerprint">
@@ -26,9 +26,17 @@
         ThumbmarkJS.getFingerprint().then(
     function(fp) {
         document.getElementById('browserFingerprint').value = fp;
-        console.log(fp);
     }
-);
+    );
+
+    var loginFailed = "{{login_failed}}";
+    if (loginFailed === "True") {
+            var username = "{{ username}}";
+            document.getElementById('username').value = username;
+            setTimeout(function() {
+            alert("Login failed. Please try again.");
+            }, 100);
+        }
     </script>
     
 </html>
