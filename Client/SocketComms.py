@@ -1,4 +1,5 @@
 import ast
+import base64
 import binascii
 import select
 import socket
@@ -80,15 +81,9 @@ def server_listen_handler(private_key, socketio):
                 packet = server_socket.recv(MAX_PACKET_LENGTH, 0)
                 message += packet
 
-            #print(f"{Message_Type.FILE.value} - {Message_Type.FILE.value == 2}")
-
             if message_header.type == Message_Type.TEXT.value:
-                #print(type(private_key))
-                #print(type(message))
-                #print(type(message_header.type))
                 temp = decrypt_wrapper(message, message_header.type)
                 split_message = decrypt_wrapper(message, message_header.type).decode('utf-8').split(chr(30))
-                # TODO actually get the right public key
                 bytes_signature = ast.literal_eval(split_message[1])
                 split_message[2] += f" - {verify_signature(get_public_key_from_user(split_message[2]), split_message[0].encode('utf-8'), bytes_signature)}"
 
@@ -106,10 +101,7 @@ def server_listen_handler(private_key, socketio):
                 print("Yay??")
 
             elif message_header.type == Message_Type.FILE.value:
-                #print("Received contents")
-                #print(decrypt_wrapper(private_key, message, message_header.type))
-                decrypted_message = decrypt_wrapper(private_key, message, message_header.type)
-                #print(decrypted_message)
+                decrypted_message = decrypt_wrapper(message, message_header.type)
                 file_data = decrypted_message[:file_metadata_header.number_of_packets]
 
                 remaining_data = decrypted_message[file_metadata_header.number_of_packets:]
@@ -117,11 +109,24 @@ def server_listen_handler(private_key, socketio):
                 split_message = remaining_data.decode('utf-8').split(chr(30))
 
                 bytes_signature = ast.literal_eval(split_message[0])
-                #print(bytes_signature)
-                #for thing in split_message:
-                    #print(thing)
-                with open(f"{verify_signature(get_public_key(), file_data, bytes_signature).replace(' ', '-')}_{split_message[2]}_{split_message[3]}", "wb") as file:
-                    file.write(file_data)
+
+                file_name_with_verification = str(
+                    verify_signature(get_public_key_from_user(split_message[1]), file_data, bytes_signature)
+                ) + " - " + split_message[3]
+
+                print(f"File bytes recv {file_data}")
+
+                data = {
+                    'username': split_message[1],
+                    'target': split_message[4],
+                    'fileData': file_data,
+                    'fileName': file_name_with_verification
+                }
+                target = get_user(split_message[4])
+                print(target)
+                target_room = target.current_room
+                socketio.emit('receive_file', data, room=target_room)
+                print("Yay file??")
             else:
                 print("This should not be possible")
         else:
@@ -161,7 +166,7 @@ def server_send_handler(message_to_send, metadata_to_send, message_type, server_
                     count = 0
                     for message in message_to_send:
                         count += 1
-                        print(message)
+                        #print(message)
                         server.send(message)
                     print(f"Message sent\n")
 
@@ -188,7 +193,7 @@ def server_send_handler(message_to_send, metadata_to_send, message_type, server_
                         attempts += 1
 
 
-def prepare_message(sender, target, data, target_public_key, message_type, server_ips):
+def prepare_message(sender, target, data, target_public_key, message_type, server_ips, file_name=None):
     if message_type == Message_Type.TEXT:
         #print(f"\tData 1 - {data.encode('utf-8')}")
         message_signature = sign(data.encode('utf-8'))
@@ -196,14 +201,15 @@ def prepare_message(sender, target, data, target_public_key, message_type, serve
 
         message, metadata = form_message_blocks(message_to_send, MAX_PACKET_LENGTH, target_public_key)
     elif message_type == Message_Type.FILE:
-        with open(data, mode="rb") as file:
-            file_bytes = file.read()
+        #with open(data, mode="rb") as file:
+            #file_bytes = file.read()
         #print(f"Data 1 - {file_bytes}")
+        file_bytes = data
         message_signature = sign(file_bytes)
         while bytes([30]) in message_signature:
             message_signature = sign(file_bytes)
         #print(message_signature)
-        message_to_send = MessageFile(data, target, sender, message_signature)
+        message_to_send = MessageFile(file_name, data, target, sender, message_signature)
 
         message, metadata = form_message_blocks(message_to_send, MAX_PACKET_LENGTH, target_public_key)
     else:
