@@ -7,9 +7,12 @@
     <h1>You have been invited to join the secure chat app as: {{username}}</h1>
     <form method = "POST" action="/register_submit"> 
             <label>Enter New Password:</label>
-            <input type="text" name="password" required>
+            <input type="password" name="password" required>
             <input type="hidden" name="browserFingerprint" id="browserFingerprint">
         <button type="submit">Submit</button>
+        <br>
+        <input type="checkbox" id="agreeCheckbox" required>
+            <label for="agreeCheckbox">By registering, I consent to the minimal collection and storage of my data necessary for utilizing this service.</label><br><br>
     </form>
 </body>
 
