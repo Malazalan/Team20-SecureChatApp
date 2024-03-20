@@ -1,4 +1,6 @@
 import random
+import datetime
+from cryptography.fernet import Fernet
 import importlib
 import Database
 importlib.reload(Database)
@@ -62,16 +64,22 @@ def generate_username():
 def add_user():
     new_username = generate_username()
     if not Database.get_user(new_username) and not Database.invite_exists(new_username): #TODO: error handling 
-        invite_id = "temp_key" # TODO: make this an encrypted string that only the server can decrypt. This should be 
-        Database.write_invite(new_username, invite_id)  # unique to the invite - probably the username+timestamp encrypted
-                                                        # in a way only the server can decrypt
-        print(f"http://127.0.0.1:5000/register/{new_username}/{invite_id}")
+        
+        invite_id_key = "jQZ-Ijedw017l5T_UR_KmOToGYVwEKhln3udhsm39Zw=" # This could be more secure #Fernet.generate_key()
+        cipher_suite = Fernet(invite_id_key)
+
+        current_time = datetime.datetime.now()
+        invite_id = current_time.strftime("%Y%m%d%H%M%S")
+        encrypted_invite_id = cipher_suite.encrypt(invite_id.encode())
+        
+        Database.write_invite(new_username, encrypted_invite_id.decode('utf-8')) 
+                                                       
+        #print(f"https://team20.joe-bainbridge.com/register/{new_username}/{encrypted_invite_id.decode('utf-8')}")
+        print(f"http://127.0.0.1:5000/register/{new_username}/{encrypted_invite_id.decode('utf-8')}")
+
     else:
         print("error handling")
         add_user() #TODO: this is bad, could lead to an infinite loop
-
-
-
 
 add_user()
 
