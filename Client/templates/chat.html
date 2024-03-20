@@ -136,13 +136,16 @@ window.onload = function() {
     });
 
     socket.on('receive_file', function (data) {
+        console.log('Received data type:', typeof data.fileData);
+        console.log('Received data size:', data.fileData.byteLength);
         const newNode = document.createElement('div');
-        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${data.file}" download="${data.file_name}">${data.file_name}</a>`;
+        const fileBlob = new Blob([data.fileData], { type: "application/octet-stream" });
+        const fileURL = URL.createObjectURL(fileBlob);
+        newNode.innerHTML = `<b>${data.username}:&nbsp;</b> Download: <a href="${fileURL}" download="${data.fileName}">${data.fileName}</a>`;
         document.getElementById('messages').appendChild(newNode);
-        
     });
 
-    function appendMessage(data) {
+function appendMessage(data) {
         const newNode = document.createElement('div');
         if (data.is_encrypted){
             newNode.innerHTML = `<b>${data.username}:&nbsp;</b> <button value="${data.message}" class="decrypt-button" onclick="decryptMessage(this, this.value)">Decrypt</button>`;
@@ -163,24 +166,25 @@ window.onload = function() {
 <script>
     document.getElementById('send_file_form').onsubmit = function (e) {
         e.preventDefault();
-        let file = document.getElementById('file_input');
-        if(file.files.length) {
-            var fileName = file.files[0].name;
-            var reader = new FileReader();
-            reader.onload = function(e)
-            {
-                suitable_name = e.target.result
+        let fileInput = document.getElementById('file_input');
+        if(fileInput.files.length) {
+            let file = fileInput.files[0];
+            let fileName = file.name;
+            let reader = new FileReader();
+
+            reader.onload = function(loadEvent) {
+                let arrayBuffer = loadEvent.target.result;
                 socket.emit('file_sent', {
-                username: "{{current_user.username}}",
-                target: "{{target_user_id}}",
-                suitable_name: suitable_name,
-                file_name: fileName
+                    username: "{{current_user.username}}",
+                    target: "{{target_user_id}}",
+                    fileData: arrayBuffer,
+                    fileName: fileName
                 });
                 document.getElementById('file_input').value = '';
             };
-            reader.readAsDataURL(file.files[0]);
+            reader.readAsArrayBuffer(file);
         }
-    }
+    };
 
     async function encryptMessage(plaintext, password) {
         const textEncoder = new TextEncoder();
