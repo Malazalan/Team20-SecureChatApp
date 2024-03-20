@@ -114,12 +114,11 @@ def register_function():
         password = request.form.get('password')
 
         browser_fingerprint = request.form.get('browserFingerprint') 
-        username = request.headers.get('Referer').split('/')[-2]          
-        email = "bleh@gmail.com" #TODO: remove all refrences to email in all the files - it is not used anymore                                      
+        username = request.headers.get('Referer').split('/')[-2]
         
         user = get_user(username)
-        if user is None:  
-            Database.write_user(username, email, password, browser_fingerprint)
+        if user is None:
+            Database.write_user(username, password, browser_fingerprint)
             Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
             user = get_user(username)
             if user is not None:
@@ -172,10 +171,10 @@ def handle_message_sent(data):
            
 @socketio.on('file_sent')
 def handle_file_sent(data):
-    file = data['suitable_name'] # would not work just being called 'file', so i figured this was the next best name
-    file_name = data['file_name']
+    file_name = data['fileName']
+    file_bytes = data['fileData']
 
-    if True: # TODO: Input checking on file maybe?
+    if True:
         print("2")
         target = get_user(data['target'])
         if target:
@@ -185,17 +184,15 @@ def handle_file_sent(data):
                 socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
-                    'file': file,
-                    'file_name': file_name,
+                    'fileData': file_bytes,
+                    'fileName': file_name,
 
                 }, room=sender_room)
-                socketio.emit('receive_file', {
-                    'username': data['username'],
-                    'target': data['target'],
-                    'file': file,
-                    'file_name': file_name,
-
-                }, room=target_room)              
+                write_thread = threading.Thread(target=prepare_message,
+                                                args=(data['username'], data['target'], file_bytes,
+                                                      get_public_key_from_user(data['target']), Message_Type.FILE,
+                                                      test_multiple_server_ips, file_name))
+                write_thread.start()
             else:
                 failure_data = data
                 failure_data['message'] = "File failed to send, target user not online"
