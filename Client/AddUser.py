@@ -69,13 +69,13 @@ def add_user():
         cipher_suite = Fernet(invite_id_key)
 
         current_time = datetime.datetime.now()
-        invite_id = current_time.strftime("%Y%m%d%H%M%S")
-        encrypted_invite_id = cipher_suite.encrypt(invite_id.encode())
+        invite_id = f"{new_username}[split]{current_time.strftime('%Y%m%d%H%M%S')}"
+        encrypted_invite_id = cipher_suite.encrypt(invite_id.encode()).decode('utf-8')
         
-        Database.write_invite(new_username, encrypted_invite_id.decode('utf-8')) 
+        Database.write_invite(new_username, encrypted_invite_id) 
                                                        
-        #print(f"https://team20.joe-bainbridge.com/register/{new_username}/{encrypted_invite_id.decode('utf-8')}")
-        print(f"http://127.0.0.1:5000/register/{new_username}/{encrypted_invite_id.decode('utf-8')}")
+        #print(f"https://team20.joe-bainbridge.com/register/{encrypted_invite_id}")
+        print(f"http://127.0.0.1:5000//register/{encrypted_invite_id}")
 
     else:
         print("error handling")
