@@ -7,6 +7,7 @@ import os
 import gdown
 import datetime
 from cryptography.fernet import Fernet
+from flask import session
 
 import Database
 importlib.reload(Database)
@@ -104,50 +105,56 @@ def login_function():
     #return redirect(url_for('login_page', login_failed = True, username=username)) 
     return render_template('login.html', login_failed = True, username=username ) # should fix it so it works with the line above really
 
-@app.route('/register/<target_user>/<invite_id>')
-def register_page(target_user, invite_id):
+@app.route('/register/<invite_id>')
+def register_page(invite_id):
     error = "invalid invitation" # Default error message
 
     if current_user.is_authenticated:
          logout_user()
-         
-    invite = Database.get_invite(target_user)
-
     try:
-        decrypted_invite_id = invite_id_cipher.decrypt(invite_id.encode()).decode()
+        decrypted_invite = invite_id_cipher.decrypt(invite_id.encode()).decode().split('[split]')
         
-        converted_time = datetime.datetime.strptime(decrypted_invite_id, "%Y%m%d%H%M%S")
+    except: 
+        error = "Decryption failed"
+    else:
+        print(f"\n\n AAAH {decrypted_invite}\n\n")
+        decrypted_username = decrypted_invite[0]
+        decrypted_time = decrypted_invite[1]
+
+        print(f"{decrypted_username} {decrypted_time}")
+
+        invite = Database.get_invite(decrypted_username)
+
+        converted_time = datetime.datetime.strptime(decrypted_time, "%Y%m%d%H%M%S")
         time_difference = datetime.datetime.now() - converted_time 
         invite_expired = False if  time_difference < datetime.timedelta(days=1) else True
-    except: # This should be catching a specific error really 
-        invite_expired = True
 
-
-    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']) and not invite_expired:
-        return render_template('register.html', username = target_user)
+        if invite and invite['invite_id']==invite_id and not get_user(decrypted_username) and not invite_expired:
+            session['username'] = decrypted_username
+            return render_template('register.html', username = decrypted_username)
+        
+        if invite and invite_expired:
+                Database.remove_invite(decrypted_username)
+                error = "invatation expired"
     
-    if invite and invite_expired:
-            Database.remove_invite(target_user)
-            error = "invatation expired"
     print(f"Error: {error}")
     return redirect(url_for('login_page')) 
 
 @app.route('/register_submit', methods = ['GET', 'POST'])
 def register_function():
     if request.method == 'POST':
-        password = request.form.get('password')
-
-        browser_fingerprint = request.form.get('browserFingerprint') 
-        username = request.headers.get('Referer').split('/')[-2]
-        
-        user = get_user(username)
-        if user is None:
-            Database.write_user(username, password, browser_fingerprint)
-            Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
+        username = session.get('username')
+        if username:
+            password = request.form.get('password')
+            browser_fingerprint = request.form.get('browserFingerprint')                                       
             user = get_user(username)
-            if user is not None:
-                login_user(user)
-                return redirect(url_for('home_page'))
+            if user is None:  
+                Database.write_user(username, password, browser_fingerprint)
+                Database.remove_invite(username) #TODO: could add error handling here in vase the function returns false
+                user = get_user(username)
+                if user is not None:
+                    login_user(user)
+                    return redirect(url_for('home_page'))
     return redirect(url_for('register_page')) #TODO: add error handling for if user is not none and this happens
 
 @app.route('/logout')
