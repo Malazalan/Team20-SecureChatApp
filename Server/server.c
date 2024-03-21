@@ -150,23 +150,6 @@ struct Client {
     int IPSize;
 };
 
-void secureFreeClient (struct Client * client) {
-    if (client) {
-        if (client->username) {
-            memset(client->username, 0, client->usernameSize);
-            free(client->username);
-        }
-
-        if (client->IP) {
-            memset(client->IP, 0, client->IPSize);
-            free(client->IP);
-        }
-
-        memset(client, 0, sizeof(*client));
-        free(client);
-    }
-}
-
 void secureFree (void * buffer, size_t length) {
     if (buffer) {  // Get the length of the string
         memset(buffer, 0, length);       // Clear the content of the string
@@ -193,7 +176,7 @@ void convertHeaderToBytes(struct Header header, unsigned char* headerBytes) {
 }
 
 void handleWrite(char* address, struct Header * messageHeader, struct Header * metadataHeader,
-        struct Header * fileMetadataHeader, const unsigned char* messageToSend, const unsigned char* metadataToSend) {
+        struct Header * fileMetadataHeader, unsigned char* messageToSend) {
     int sockfd;
     struct sockaddr_in clientAddr;
 
@@ -260,6 +243,8 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
             }
         }
 
+        secureFree(messageToSend, sizeof(messageToSend));
+
         logDebug(TRACE, "Sent %d/%d", packetNum + 1, messageHeader->numberOfPackets);
         send(sockfd, buffer, MAX_PACKET_LENGTH, 0);
         logDebug(TRACE, "Pre secureFree 265");
@@ -268,17 +253,32 @@ void handleWrite(char* address, struct Header * messageHeader, struct Header * m
         logDebug(TRACE, "Post secureFree 265");
     }
     logDebug(INFO, "Finished");
+
+
 }
 
 struct WriteThreadArgs {
     char * addr;
-    struct Header * header;
-    unsigned char messageToSend;
+    struct Header * messageHeader;
+    struct Header * metadataHeader;
+    struct Header * fileMetadataHeader;
+    unsigned char * messageToSend;
 };
 
 void *writeThreadWrapper(void* args) {
+    pthread_detach(pthread_self());
     struct WriteThreadArgs* threadArgs = (struct WriteThreadArgs*) args;
 
+    handleWrite(threadArgs->addr,
+                threadArgs->messageHeader,
+                threadArgs->metadataHeader,
+                threadArgs->fileMetadataHeader,
+                threadArgs->messageToSend);
+
+    secureFree(threadArgs->addr, strlen(threadArgs->addr) + 1);
+    secureFree(threadArgs, sizeof(struct WriteThreadArgs));
+
+    pthread_exit(NULL);
 }
 
 char** splitMessage(char* receivedMessage, int* tokenCount) {
@@ -607,40 +607,37 @@ int main(int argc, char * argv[]) {
             logDebug(INFO, "Found %s", tokens[1]);
             logDebug(INFO, "Got - %s", getIPAddress(tokens[1]));
             logDebug(TRACE, "Metadata -> %s", metadataToSend);
-            handleWrite(getIPAddress(tokens[1]), &messageHeader, &metadataHeader, &fileMetadataHeader,
-                        receivedMessage, (unsigned char*)metadataToSend);
+
+            struct WriteThreadArgs *threadArgs = malloc(sizeof(struct WriteThreadArgs));
+
+            /*char * addr;
+            struct Header * messageHeader;
+            struct Header * metadataHeader;
+            struct Header * fileMetadataHeader;
+            unsigned char * messageToSend;
+            unsigned char * metadataToSend;*/
+
+            char* addrForArgs = malloc(strnlen(getIPAddress(tokens[1]), 16));
+            strncpy(addrForArgs, getIPAddress(tokens[1]), 16);
+
+            threadArgs->addr = addrForArgs;
+            threadArgs->messageHeader = &messageHeader;
+            threadArgs->metadataHeader = &metadataHeader;
+            threadArgs->fileMetadataHeader = &fileMetadataHeader;
+            threadArgs->messageToSend = receivedMessage;
+
+            pthread_t newWriteThread;
+
+            int threadError = pthread_create(&newWriteThread, NULL,
+                                             writeThreadWrapper, (void *)threadArgs);
+            if (threadError != 0) {
+                logDebug(CRITICAL, "Failed to create write thread");
+                secureFree(addrForArgs, strlen(addrForArgs) + 1);
+                secureFree(threadArgs, sizeof(struct WriteThreadArgs));
+            }
         } else {
             logAction(WARN, tokens[0], "Cannot find %s", tokens[1]);
         }
-
-        /*for (int i = 0; i < MAX_CLIENTS; i++) {
-            // Find the IP address of the target
-            // Check if the target exists
-            if (allClients[i] != NULL) {
-                logDebug(TRACE, "Checking %s with %s", tokens[1], allClients[i]->username);
-                if (strcmp(tokens[1], allClients[i]->username) == 0) {
-                    break;
-                }
-            } else {
-                logAction(WARN, tokens[0], "Cannot find %s", tokens[1]);
-                break;
-            }
-        }*/
-
-        //printf("%s\n%s\n---\n", messageToSend, receivedMessage);
-
-        /*for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (allClients[i] != NULL) {
-                printf("Checking %s with %s\n", tokens[3], allClients[i]->username);
-                if (strcmp(tokens[3], allClients[i]->username) == 0) {
-                    handleWrite(allClients[i]->IP, &headerToSend, (unsigned char*)messageToSend);
-                    //TODO handle write in a separate thread
-                    break;
-                }
-            } else {
-                break;
-            }
-        }*/
 
         for(int i = 0; i < tokenCount; i++) {
             secureFree(tokens[i], strlen(tokens[i]));
