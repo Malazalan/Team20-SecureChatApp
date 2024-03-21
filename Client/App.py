@@ -5,9 +5,10 @@ from flask_socketio import SocketIO
 import importlib
 import os
 import gdown
+import datetime
+from cryptography.fernet import Fernet
 
 import Database
-
 importlib.reload(Database)
 import User
 importlib.reload(User)
@@ -25,12 +26,18 @@ socketio = SocketIO(app, max_http_buffer_size=10000000)
 
 app.secret_key = "very_secret_key" # TODO: this
 
-server_ip = "127.0.0.1"
-test_multiple_server_ips = [server_ip, "1.2.3.4", "5.6.7.8"]
+use_c_backend = True # needs to be changed in two places!
+
+if use_c_backend:
+    server_ip = "127.0.0.1"
+    test_multiple_server_ips = [server_ip, "1.2.3.4", "5.6.7.8"]
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
+
+invite_id_key = "jQZ-Ijedw017l5T_UR_KmOToGYVwEKhln3udhsm39Zw=" # This could be more secure #Fernet.generate_key()
+invite_id_cipher = Fernet(invite_id_key)
 
 use_ml = False
 
@@ -56,13 +63,10 @@ if use_ml:
 
     ml_model = CleaningML.CleaningML() 
 
-
-
 if os.path.exists("cert.pem") and os.path.exists("key.pem"):
     ip_addr = "https://team20.joe-bainbridge.com/"
 else:
     ip_addr = "http://127.0.0.1:5000"
-
 
 @app.route('/')
 def login_page():
@@ -101,11 +105,30 @@ def login_function():
 
 @app.route('/register/<target_user>/<invite_id>')
 def register_page(target_user, invite_id):
+    error = "invalid invitation" # Default error message
+
     if current_user.is_authenticated:
          logout_user()
+         
     invite = Database.get_invite(target_user)
-    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']):
+
+    try:
+        decrypted_invite_id = invite_id_cipher.decrypt(invite_id.encode()).decode()
+        
+        converted_time = datetime.datetime.strptime(decrypted_invite_id, "%Y%m%d%H%M%S")
+        time_difference = datetime.datetime.now() - converted_time 
+        invite_expired = False if  time_difference < datetime.timedelta(days=1) else True
+    except: # This should be catching a specific error really 
+        invite_expired = True
+
+
+    if invite and invite['invite_id']==invite_id and not get_user(invite['_id']) and not invite_expired:
         return render_template('register.html', username = target_user)
+    
+    if invite and invite_expired:
+            Database.remove_invite(target_user)
+            error = "invatation expired"
+    print(f"Error: {error}")
     return redirect(url_for('login_page')) 
 
 @app.route('/register_submit', methods = ['GET', 'POST'])
@@ -158,12 +181,16 @@ def handle_message_sent(data):
         if not predicted_safe: # probably a better way to do all this error handling stuff to be honest
             error = f"Message detected as {ml_prediction.predicted_label} attack by ML model."
         if target_room is not None and predicted_safe:
-            socketio.emit('receive_message', data, room=sender_room)
-            write_thread = threading.Thread(target=prepare_message,
-                                           args=(data['username'], data['target'], data['message'],
-                                                 get_public_key_from_user(data['target']), Message_Type.TEXT,
-                                                 test_multiple_server_ips))
-            write_thread.start()
+            if use_c_backend:
+                socketio.emit('receive_message', data, room=sender_room)
+                write_thread = threading.Thread(target=prepare_message,
+                                            args=(data['username'], data['target'], data['message'],
+                                                    get_public_key_from_user(data['target']), Message_Type.TEXT,
+                                                    test_multiple_server_ips))
+                write_thread.start()
+            else:
+                socketio.emit('receive_message', data, room=sender_room)
+                socketio.emit('receive_message', data, room=target_room)
         else:
             failure_data = data
             failure_data['message'] = f"Message failed to send, {error}"
@@ -199,16 +226,28 @@ def handle_file_sent(data):
                 socketio.emit('receive_message', data, room=sender_room)
         
 if __name__ == '__main__':
-    listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(), socketio))
-    listen_thread.start()
-    add_public_key_to_all_users(get_public_key())
-    socketio.run(app, debug=True, use_reloader=False)
+    
 
-    listen_thread.join(timeout=5)  # Timeout in seconds
-    if listen_thread.is_alive():
-        print("Warning: listen_thread did not terminate gracefully.")
+    use_c_backend = True # needs to be changed in two places!
+
+    if use_c_backend:
+        listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(), socketio))
+        listen_thread.start()
+        add_public_key_to_all_users(get_public_key())
+    
+        socketio.run(app, debug=True, use_reloader=False)
+
+        
+        listen_thread.join(timeout=5)  # Timeout in seconds
+        if listen_thread.is_alive():
+            print("Warning: listen_thread did not terminate gracefully.")
+        else:
+            print("listen_thread terminated gracefully")
     else:
-        print("listen_thread terminated gracefully")
+        if os.path.exists("cert.pem") and os.path.exists("key.pem"):
+            socketio.run(app, debug=True, ssl_context=('cert.pem', 'key.pem'), port=443)
+        else:
+            socketio.run(app, debug=True)
 
 
 
