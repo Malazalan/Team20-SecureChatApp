@@ -206,10 +206,10 @@ def handle_message_sent(data):
            
 @socketio.on('file_sent')
 def handle_file_sent(data):
-    file = data['suitable_name'] # would not work just being called 'file', so i figured this was the next best name
-    file_name = data['file_name']
+    file_name = data['fileName']
+    file_bytes = data['fileData']
 
-    if True: # TODO: Input checking on file maybe?
+    if True:
         print("2")
         target = get_user(data['target'])
         if target:
@@ -219,17 +219,15 @@ def handle_file_sent(data):
                 socketio.emit('receive_file', {
                     'username': data['username'],
                     'target': data['target'],
-                    'file': file,
-                    'file_name': file_name,
+                    'fileData': file_bytes,
+                    'fileName': file_name,
 
                 }, room=sender_room)
-                socketio.emit('receive_file', {
-                    'username': data['username'],
-                    'target': data['target'],
-                    'file': file,
-                    'file_name': file_name,
-
-                }, room=target_room)              
+                write_thread = threading.Thread(target=prepare_message,
+                                                args=(data['username'], data['target'], file_bytes,
+                                                      get_public_key_from_user(data['target']), Message_Type.FILE,
+                                                      test_multiple_server_ips, file_name))
+                write_thread.start()
             else:
                 failure_data = data
                 failure_data['message'] = "File failed to send, target user not online"
