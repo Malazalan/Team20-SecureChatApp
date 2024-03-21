@@ -164,14 +164,32 @@
         listElement.innerHTML = '';
         favourites.forEach(userId => {
             const li = document.createElement('li');
-            li.textContent = userId;
+            li.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // 设置背景色
+            li.style.color = '#333'; // 设置文字颜色
+            li.style.margin = '0.5rem 0'; // 设置外边距
+            li.style.padding = '0.5rem'; // 设置内边距
+            li.style.borderRadius = '5px'; // 设置边框圆角
+            li.style.display = 'flex'; // 设置显示方式
+            li.style.justifyContent = 'space-between'; // 设置主轴对齐方式
+            li.style.alignItems = 'center'; // 设置交叉轴对齐方式
+    
+            const link = document.createElement('a');
+            link.href = `/chat/${userId}`; // 设置链接地址
+            link.textContent = userId; // 设置链接文本
+            link.style.color = '#007bff'; // 设置链接颜色
+    
             const removeButton = document.createElement('button');
             removeButton.textContent = 'Remove';
-            removeButton.addEventListener('click', () => removeFromFavourites(userId));
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault(); // 防止链接默认行为
+                removeFromFavourites(userId);
+            });
+            li.appendChild(link);
             li.appendChild(removeButton);
             listElement.appendChild(li);
         });
     }
+    
 
     function clearContacts() {
         localStorage.setItem('favourites', JSON.stringify([]));
