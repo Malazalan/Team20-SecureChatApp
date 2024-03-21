@@ -121,12 +121,20 @@
         <button type="submit">Group Chat</button>
     </form>
 </div>
+<div class="button-container">
+        <button id="clearAllRecordButton" type="button" onclick="clearAllRecord()">Clear All Record</button>
+        </div>
 
 <script>
     // Assuming JavaScript for handling favourites will be similar to before
     document.addEventListener('DOMContentLoaded', () => {
         updateFavouritesList();
     });
+
+    document.getElementById('clearAllRecordButton').onclick = function (e) {
+        clearChat();
+        };
+
 
     function addToFavourites(userId) {
         let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
@@ -166,6 +174,32 @@
         localStorage.setItem('favourites', JSON.stringify([]));
         updateFavouritesList();
     }
+
+
+    function clearChat() {
+        function replaceCharacters(){
+           let savedMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+           let replacedMessages = savedMessages.map(message => {
+               let replacedText = message.message.replace(/./g, '0');
+               return {
+                   ...message,
+                   message: replacedText
+               };
+           });
+           localStorage.setItem('chatMessages', JSON.stringify('messages'));
+            messagesContainer.innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>';
+            replacedMessages.forEach(appendMessage);
+        }
+        replaceCharacters();
+
+        localStorage.removeItem('chatMessages');
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.innerHTML = '<b>Contents of chat:</b><br><b>----------------------------------------------</b>'; // 清空页面上的聊天记录显示
+        localStorage.clear();
+
+    }
+
+
 
 </script>
 </body>
