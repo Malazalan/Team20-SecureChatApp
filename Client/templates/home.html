@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #667eea, #764ba2);
+            background: linear-gradient(to right,#788eef, #9464c4);
             color: white;
             display: flex;
             justify-content: center;
@@ -18,22 +18,25 @@
         }
         .container {
             width: 100%;
-            max-width: 800px; /* Adjusted max-width */
+            max-width: 8000px; /* Increased max-width */
             margin: auto;
-            padding: 20px;
-            background-color: rgba(255, 255, 255, 0.95);
+            padding: 40px; /* Increased padding */
+            background-color: rgba(255, 255, 255, 0.65);
             border-radius: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 500px; /* Optional: you can add a minimum height if needed */
         }
+
         .contacts {
             /* Set a maximum height to display only four contacts */
             max-height: 220px; /* Adjust the height based on your line height */
             overflow-y: auto; /* Enable vertical scrollbar when necessary */
         }
         .contacts, .favourites {
+            width: 100%;
             max-height: 220px; /* Adjust the height based on your line height to fit 4 items */
             overflow-y: auto; /* Enable vertical scrollbar when necessary */
             margin-bottom: 1rem;
@@ -52,7 +55,7 @@
             margin: 0;
         }
         ul li {
-            background-color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.7);
             color: #333;
             margin: 0.5rem 0;
             padding: 0.5rem;
