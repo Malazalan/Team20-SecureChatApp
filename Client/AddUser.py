@@ -75,7 +75,7 @@ def add_user():
         Database.write_invite(new_username, encrypted_invite_id) 
                                                        
         #print(f"https://team20.joe-bainbridge.com/register/{encrypted_invite_id}")
-        print(f"http://127.0.0.1:5000//register/{encrypted_invite_id}")
+        print(f"http://127.0.0.1:5000/register/{encrypted_invite_id}")
 
     else:
         print("error handling")
