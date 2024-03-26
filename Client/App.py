@@ -25,7 +25,7 @@ from SocketComms import * # should maybe be changed but * works for now
 app = Flask(__name__)
 socketio = SocketIO(app, max_http_buffer_size=10000000)
 
-app.secret_key = "very_secret_key" # TODO: this
+app.secret_key = "csc8208_very_secret_key_newc24" # TODO: this
 
 use_c_backend = True # needs to be changed in two places!
 
@@ -86,6 +86,8 @@ def home_page():
 def chat_page(target_user_id):
     target_user = get_user(target_user_id)
     if target_user is not None:
+        session['username'] = current_user.get_id()
+        session['target_username'] = target_user_id
         return render_template('chat.html', target_user_id = target_user_id, ip_addr=ip_addr)
     return redirect(url_for('home_page'))
 
@@ -117,11 +119,8 @@ def register_page(invite_id):
     except: 
         error = "Decryption failed"
     else:
-        print(f"\n\n AAAH {decrypted_invite}\n\n")
         decrypted_username = decrypted_invite[0]
         decrypted_time = decrypted_invite[1]
-
-        print(f"{decrypted_username} {decrypted_time}")
 
         invite = Database.get_invite(decrypted_username)
 
@@ -169,8 +168,9 @@ def load_user(username):
 
 @socketio.on('user_connect')
 def handle_join_room_event(data):
-    app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
-    Database.set_room(current_user.get_id(), request.sid) # For extra privacy, could this be stored in the servers memory?
+    if session['username'] == data['username'] and data['target'] == session['target_username']:
+        #app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
+        Database.set_room(current_user.get_id(), request.sid) # For extra privacy, could this be stored in the servers memory?
 
 @socketio.on('disconnect')
 def handle_disconnect_event():
@@ -179,9 +179,9 @@ def handle_disconnect_event():
 @socketio.on('message_sent')
 def handle_message_sent(data):
     error = "target user not online" # maybe a bit janky 
-    app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
+    #app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
     target = get_user(data['target'])
-    if target:
+    if target and target.get_id() == session['target_username'] and session['username'] == data['username']: 
         sender_room = request.sid
         target_room = target.current_room
         ml_prediction = ml_model.predict(data['message']) if use_ml else None
@@ -210,9 +210,8 @@ def handle_file_sent(data):
     file_bytes = data['fileData']
 
     if True:
-        print("2")
         target = get_user(data['target'])
-        if target:
+        if target and target.get_id() == session['target_username'] and session['username'] == data['username']:
             sender_room = request.sid
             target_room = target.current_room
             if target_room is not None:
@@ -223,11 +222,20 @@ def handle_file_sent(data):
                     'fileName': file_name,
 
                 }, room=sender_room)
-                write_thread = threading.Thread(target=prepare_message,
-                                                args=(data['username'], data['target'], file_bytes,
-                                                      get_public_key_from_user(data['target']), Message_Type.FILE,
-                                                      test_multiple_server_ips, file_name))
-                write_thread.start()
+                if use_c_backend:
+                    write_thread = threading.Thread(target=prepare_message,
+                                                    args=(data['username'], data['target'], file_bytes,
+                                                        get_public_key_from_user(data['target']), Message_Type.FILE,
+                                                        test_multiple_server_ips, file_name))
+                    write_thread.start()
+                else:
+                    socketio.emit('receive_file', {
+                    'username': data['username'],
+                    'target': data['target'],
+                    'fileData': file_bytes,
+                    'fileName': file_name,
+
+                }, room=target_room)
             else:
                 failure_data = data
                 failure_data['message'] = "File failed to send, target user not online"
