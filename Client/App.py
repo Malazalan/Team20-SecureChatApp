@@ -184,7 +184,8 @@ def handle_message_sent(data):
     error = "target user not online" # maybe a bit janky 
     app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
     target = get_user(data['target'])
-    if target == session['target_username'] and session['username'] == data['username'] : 
+    print(f"{target}")
+    if target and target.get_id() == session['target_username'] and session['username'] == data['username']: 
         sender_room = request.sid
         target_room = target.current_room
         ml_prediction = ml_model.predict(data['message']) if use_ml else None
@@ -213,11 +214,11 @@ def handle_file_sent(data):
     file_bytes = data['fileData']
 
     if True:
-        print("2")
         target = get_user(data['target'])
-        if  target == session['target_username'] and session['username'] == data['username'] :
+        if target and target.get_id() == session['target_username'] and session['username'] == data['username']:
             sender_room = request.sid
             target_room = target.current_room
+            print(f"{target_room =}")
             if target_room is not None:
                 socketio.emit('receive_file', {
                     'username': data['username'],
