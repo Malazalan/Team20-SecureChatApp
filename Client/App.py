@@ -25,9 +25,9 @@ from SocketComms import * # should maybe be changed but * works for now
 app = Flask(__name__)
 socketio = SocketIO(app, max_http_buffer_size=10000000)
 
-app.secret_key = "very_secret_key" # TODO: this
+app.secret_key = "csc8208_very_secret_key_newc24" # TODO: this
 
-use_c_backend = False # needs to be changed in two places!
+use_c_backend = True # needs to be changed in two places!
 
 if use_c_backend:
     server_ip = "127.0.0.1"
@@ -119,11 +119,8 @@ def register_page(invite_id):
     except: 
         error = "Decryption failed"
     else:
-        print(f"\n\n AAAH {decrypted_invite}\n\n")
         decrypted_username = decrypted_invite[0]
         decrypted_time = decrypted_invite[1]
-
-        print(f"{decrypted_username} {decrypted_time}")
 
         invite = Database.get_invite(decrypted_username)
 
@@ -172,7 +169,7 @@ def load_user(username):
 @socketio.on('user_connect')
 def handle_join_room_event(data):
     if session['username'] == data['username'] and data['target'] == session['target_username']:
-        app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
+        #app.logger.info(f"{data['username']} has opened a chat with {data['target']} ")
         Database.set_room(current_user.get_id(), request.sid) # For extra privacy, could this be stored in the servers memory?
 
 @socketio.on('disconnect')
@@ -182,9 +179,8 @@ def handle_disconnect_event():
 @socketio.on('message_sent')
 def handle_message_sent(data):
     error = "target user not online" # maybe a bit janky 
-    app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
+    #app.logger.info(f"{data['username']} has sent {data['message']} to {data['target']} Encrypted: {data['is_encrypted']}") #this is temporary
     target = get_user(data['target'])
-    print(f"{target}")
     if target and target.get_id() == session['target_username'] and session['username'] == data['username']: 
         sender_room = request.sid
         target_room = target.current_room
@@ -218,7 +214,6 @@ def handle_file_sent(data):
         if target and target.get_id() == session['target_username'] and session['username'] == data['username']:
             sender_room = request.sid
             target_room = target.current_room
-            print(f"{target_room =}")
             if target_room is not None:
                 socketio.emit('receive_file', {
                     'username': data['username'],
@@ -249,7 +244,7 @@ def handle_file_sent(data):
 if __name__ == '__main__':
     
 
-    use_c_backend = False # needs to be changed in two places!
+    use_c_backend = True # needs to be changed in two places!
 
     if use_c_backend:
         listen_thread = threading.Thread(target=server_listen_handler, args=(get_private_key(), socketio))
